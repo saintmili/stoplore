@@ -2,6 +2,7 @@ package mtl
 
 import (
 	"context"
+	"os"
 	"strconv"
 	"time"
 )
@@ -20,6 +21,9 @@ func newCSVStorage(dirPath string) *CSVStorage {
 }
 
 func (s *CSVStorage) Init(ctx context.Context) error {
+	if err := os.MkdirAll(s.dirPath, 0755); err != nil {
+		return err
+	}
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
