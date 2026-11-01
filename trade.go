@@ -56,6 +56,7 @@ type ExecutionRequest struct {
 }
 
 type Trade struct {
+	Migration *MigrationEvidence
 	// PendingEssentials identifies migration facts awaiting explicit confirmation.
 	PendingEssentials       []string
 	FundingCorrections      []FundingCorrection

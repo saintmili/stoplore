@@ -79,3 +79,12 @@ merged into the integration branch after its dependencies are resolved.
   API cases cover metrics, filters, reopen, local date instants and corrections.
   Pending migration essentials and unknown fees exclude incomplete imports;
   ticket 12 adds migration-driven eligibility cases.
+
+- [12: Migrate and confirm existing CSV records](issues/12-migrate-and-confirm-existing-csv-records.md)
+  resolved: direct current/legacy CSV readers preserve source evidence and inferred
+  quantities, immediately visible trades retain pending essentials, and typed
+  confirmation validates historical fills and fees before report eligibility.
+  Unknown rules/plans remain unknown; funding stays optional. Shared CSV and
+  PostgreSQL target acceptance tests verify reopen, atomic failures, idempotency,
+  partial exits, report exclusions and unchanged source bytes. The normalized
+  importer is reusable by the PostgreSQL source adapter.
