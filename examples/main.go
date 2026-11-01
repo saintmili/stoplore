@@ -10,56 +10,29 @@ import (
 
 func main() {
 	service := mtl.NewWithCSV("data")
-	err := service.Init()
-	if err != nil {
-		panic(err)
-	}
-
+	must(service.Init())
 	ctx := context.Background()
+	rate := mtl.MustDecimal("0.04")
+	exchange, err := service.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: fmt.Sprintf("Example %d", time.Now().UnixNano()), EntryFeeRate: &rate, ExitFeeRate: &rate})
+	must(err)
+	account, err := service.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: exchange.ID, Name: "Main"})
+	must(err)
+	setup, err := service.CreateSetup(ctx, mtl.CreateSetupRequest{Name: "Breakout", Rules: "Enter after resistance breaks"})
+	must(err)
+	margin, leverage := mtl.MustDecimal("100"), mtl.MustDecimal("2")
+	trade, err := service.RecordTrade(ctx, mtl.RecordTradeRequest{
+		AccountID: account.ID, SetupVersionID: setup.Versions[0].ID, Symbol: "BTCUSDT", Direction: mtl.Long, SettlementCurrency: "USDT",
+		FirstEntry: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("0.1"), Price: mtl.MustDecimal("60000"), ExecutedAt: time.Now(), Margin: &margin, Leverage: &leverage},
+	})
+	must(err)
+	saved, err := service.GetTrade(ctx, trade.ID)
+	must(err)
+	fmt.Println("Trade:", saved.ID, "Quantity:", saved.RemainingQuantity, "Entry price:", saved.AverageEntryPrice)
+	fmt.Println("Entry fee:", saved.Executions[0].Fee.Amount, saved.SettlementCurrency)
+}
 
-	_, err = service.Journal.OpenPosition(
-		context.Background(),
-		&mtl.OpenPositionRequest{
-			Symbol:         "BTCUSDT",
-			Exchange:       "BITUNIX",
-			PositionMargin: 12,
-			OrderType:      "LIMIT",
-			Side:           "BUY",
-			EntryType:      "TRADE",
-			TimeFrame:      "1H",
-			Leverage:       2,
-			EntryPrice:     1.2,
-			Notes:          "note",
-			OpenedAt:       time.Now(),
-		},
-	)
+func must(err error) {
 	if err != nil {
 		panic(err)
 	}
-
-	// closeReq := &mtl.ClosePositionRequest{
-	// 	ID:       uuid.MustParse("c7126881-e9a9-40fb-bd76-5cce80a6673f"),
-	// 	ExitedAt: time.Now(),
-	// 	ExitMarginPercent: 100,
-	// 	ExitPrice: 1.5,
-	// 	ExitFeeRate: 0.003,
-	// 	ExitMentalState: "happy",
-	// 	ExitImageUrl: "",
-	// 	Notes: "testing",
-	// }
-	// _, err = service.Journal.ClosePosition(ctx, closeReq)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	stats, err := service.Journal.GetAnalytics(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Total Positions:", stats.TotalPositions)
-	fmt.Println("Win Rate:", stats.WinRate)
-	fmt.Println("Profit Factor:", stats.ProfitFactor)
-	fmt.Println("Expectancy:", stats.Expectancy)
-	fmt.Println("Total Pnl:", stats.TotalPnL)
 }

@@ -42,3 +42,21 @@ The shared public API behavior suite runs CSV by default. Set
 against PostgreSQL. Each test creates and drops its own random schema, so the
 configured database user needs schema creation privileges. Tests reopen the
 library and verify records through public operations.
+
+`Service.RecordTrade` records a single trading idea with a mandatory first filled
+entry. `AccountID` identifies the exchange account, and `SetupVersionID` identifies
+the immutable rules version, rather than the setup's latest rules. The caller
+supplies `LONG` or `SHORT`, an instrument symbol, and `USDT` or `USDC` settlement.
+`GetTrade` and `ListTrades` expose the recorded executions and remaining position.
+Filled quantity and price must be positive, and the execution timestamp must be
+present. Optional margin must be nonnegative and optional leverage positive;
+neither determines quantity. Execution instants retain nanosecond precision.
+
+The first entry snapshots its exchange's entry percentage in `Execution.Fee.Rate`
+and its calculated charge in `Execution.Fee.Amount`. Its default charge is
+`quantity * price * rate / 100`, rounded to 18 fractional places using the division
+contract above. A configured zero rate produces a known zero fee. An absent rate
+rejects the request; changing exchange settings subsequently leaves the saved
+execution's rate and amount intact. Inputs and averages for a single entry retain
+the entered decimal value without rounding. `ListTrades` orders by journal
+creation time, with UUID as a deterministic tie breaker.
