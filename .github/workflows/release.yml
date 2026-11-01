@@ -31,6 +31,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       commit: ${{ steps.release.outputs.commit }}
+      module: ${{ steps.release.outputs.module }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -52,6 +53,7 @@ jobs:
     uses: ./.github/workflows/test.yml
     with:
       commit: ${{ needs.validate.outputs.commit }}
+      module: ${{ needs.validate.outputs.module }}
 
   publish:
     needs: [validate, test]
@@ -92,10 +94,11 @@ jobs:
           GOPROXY: https://proxy.golang.org
           GOSUMDB: sum.golang.org
           GOWORK: 'off'
+          MODULE: ${{ steps.release.outputs.module }}
         working-directory: ${{ runner.temp }}
         run: |
           for attempt in {1..12}; do
-            if go list -m "github.com/saintmili/mtl@$VERSION"; then exit 0; fi
+            if go list -m "$MODULE@$VERSION"; then exit 0; fi
             if [[ "$attempt" -lt 12 ]]; then sleep 20; fi
           done
           echo 'Go proxy has not resolved the module; retry this release with the same version and commit.' >&2
@@ -103,11 +106,12 @@ jobs:
       - name: Publish release notes
         env:
           PREVIOUS: ${{ steps.release.outputs.previous }}
+          LATEST: ${{ steps.release.outputs.latest }}
         run: |
           if gh release view "$VERSION" --json isDraft,isPrerelease > "$RUNNER_TEMP/release.json"; then
             python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); sys.exit(1 if r["isDraft"] or r["isPrerelease"] else 0)' "$RUNNER_TEMP/release.json"
           else
             args=()
             if [[ -n "$PREVIOUS" ]]; then args+=(--notes-start-tag "$PREVIOUS"); fi
-            gh release create "$VERSION" --verify-tag --title "$VERSION" --generate-notes "${args[@]}"
+            gh release create "$VERSION" --verify-tag --title "$VERSION" --generate-notes --latest="$LATEST" "${args[@]}"
           fi

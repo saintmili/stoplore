@@ -58,10 +58,10 @@ class ReleaseValidationTests(unittest.TestCase):
         self.assertEqual(self.validate("v0.2.0").returncode, 0)
         self.git("tag", "v0.2.0")
         self.assertNotEqual(self.validate("v0.1.1").returncode, 0)
-        self.assertNotEqual(self.validate("v0.1.0", retry=True).returncode, 0)
+        self.assertEqual(self.validate("v0.1.0", retry=True).returncode, 0)
 
     def test_rejects_invalid_versions_and_symbolic_commit_inputs(self):
-        for version in ("v0.01.0", "v0.1.0-rc.1", "v1.0.0", "0.1.0", "v0.1.0\n"):
+        for version in ("v0.01.0", "v0.1.0-rc.1", "0.1.0", "v0.1.0\n"):
             with self.subTest(version=version):
                 self.assertNotEqual(self.validate(version).returncode, 0)
         self.assertNotEqual(self.validate(commit="master").returncode, 0)
@@ -74,13 +74,24 @@ class ReleaseValidationTests(unittest.TestCase):
         self.git("update-ref", "-d", "refs/remotes/origin/release/v0.1")
         self.assertNotEqual(self.validate().returncode, 0)
 
-    def test_release_must_include_previous_release_history(self):
+    def test_release_can_use_independently_applied_fixes(self):
         self.git("tag", "v0.1.0")
         self.git("switch", "--orphan", "unrelated")
         self.git("commit", "--allow-empty", "-m", "unrelated history")
         unrelated_sha = self.git("rev-parse", "HEAD")
         self.git("update-ref", "refs/remotes/origin/release/v0.2", unrelated_sha)
-        self.assertNotEqual(self.validate("v0.2.0", commit=unrelated_sha).returncode, 0)
+        self.assertEqual(self.validate("v0.2.0", commit=unrelated_sha).returncode, 0)
+
+    def test_stable_major_versions_use_correct_module_paths(self):
+        self.git("tag", "v0.1.0")
+        for version, branch, module in (
+            ("v1.0.0", "release/v1.0", "github.com/saintmili/mtl"),
+            ("v2.0.0", "release/v2.0", "github.com/saintmili/mtl/v2"),
+        ):
+            self.git("update-ref", f"refs/remotes/origin/{branch}", self.sha)
+            result = self.validate(version)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(f"module={module}\n", result.stdout)
 
 
 if __name__ == "__main__":

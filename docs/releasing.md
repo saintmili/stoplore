@@ -61,8 +61,8 @@ git rev-parse HEAD
 
 Use the same procedure with a new minor branch when preparing its first release.
 Merge fixes into the supported release branch and carry them to `master` before
-preparing the next minor. New release commits must include the preceding stable
-release in their history. Review compatibility and storage migration requirements
+preparing the next minor. Fixes may be merged or cherry-picked between branches.
+Review compatibility and storage migration requirements
 in the pull request; the workflow cannot infer whether a change is a feature or
 a breaking change.
 
@@ -89,9 +89,11 @@ gh workflow run release.yml --repo saintmili/mtl --ref master \
 The workflow validates inputs, tests the exact commit with read-only permissions,
 then revalidates branch and version state before publishing. Only one release
 workflow runs at a time. It does not execute the selected release's code in the
-job holding publishing credentials. The pipeline rejects v1 and later versions
-until a stable-version policy is agreed, and rejects patches for superseded minor
-lines. An older patch in the current minor line can still resume publication.
+job holding publishing credentials. During v0, the pipeline rejects new patches
+for superseded minor lines. Existing tags from any line can resume publication
+without becoming the latest release. Versions v2 and later require the matching
+major-version module path, such as `github.com/saintmili/mtl/v2`, in the selected
+commit's `go.mod`.
 
 If publication fails after the tag was pushed, run the workflow again with the
 same version and SHA and set `retry` to true. Do not delete or move the tag.

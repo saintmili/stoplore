@@ -15,12 +15,12 @@ def git(*args):
 
 def validate(version, commit, retry):
     match = VERSION.fullmatch(version)
-    if not match or match[1] != "0":
-        raise ValueError("Use a stable v0.MINOR.PATCH version; v1 needs a new policy.")
+    if not match:
+        raise ValueError("Use a stable vMAJOR.MINOR.PATCH version.")
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("Select an exact, full 40-character commit SHA.")
     commit = git("rev-parse", "--verify", f"{commit}^{{commit}}")
-    branch = f"release/v0.{match[2]}"
+    branch = f"release/v{match[1]}.{match[2]}"
     git("rev-parse", "--verify", f"refs/remotes/origin/{branch}")
     if subprocess.run([
         "git", "merge-base", "--is-ancestor", commit,
@@ -42,7 +42,7 @@ def validate(version, commit, retry):
     )
     selected = tuple(map(int, match.groups()))
     latest = versions[-1][0] if versions else None
-    if latest and (latest[0] != 0 or selected[:2] < latest[:2]):
+    if not exists and latest and selected[0] == 0 and selected[:2] < latest[:2]:
         raise ValueError("Only the latest stable v0 minor line receives fixes.")
     previous = ""
     if not exists:
@@ -56,14 +56,13 @@ def validate(version, commit, retry):
     earlier = [(number, tag) for number, tag in versions if number < selected]
     if earlier:
         previous = earlier[-1][1]
-        if subprocess.run([
-            "git", "merge-base", "--is-ancestor",
-            f"refs/tags/{previous}^{{commit}}", commit,
-        ]).returncode:
-            raise ValueError("Selected commit must include the preceding release.")
     return {
         "commit": commit, "branch": branch, "version": version,
         "exists": str(exists).lower(), "previous": previous,
+        "module": "github.com/saintmili/mtl" + (
+            f"/v{selected[0]}" if selected[0] >= 2 else ""
+        ),
+        "latest": str(not latest or selected >= latest).lower(),
     }
 
 
