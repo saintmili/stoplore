@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable version, starting with v0.1.0
+        required: true
+        type: string
+      commit:
+        description: Full commit SHA from the matching release branch
+        required: true
+        type: string
+      retry:
+        description: Resume publication of an existing tag at the same commit
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+# All versions share a lock so a new minor cannot race an old-line patch.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.repository == 'saintmili/mtl' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      commit: ${{ steps.release.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate release
+        id: release
+        env:
+          VERSION: ${{ inputs.version }}
+          COMMIT: ${{ inputs.commit }}
+          RETRY: ${{ inputs.retry }}
+        run: |
+          args=()
+          if [[ "$RETRY" == true ]]; then args+=(--retry); fi
+          python3 scripts/validate_release.py "$VERSION" "$COMMIT" "${args[@]}" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: validate
+    uses: ./.github/workflows/test.yml
+    with:
+      commit: ${{ needs.validate.outputs.commit }}
+
+  publish:
+    needs: [validate, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ inputs.version }}
+      COMMIT: ${{ needs.validate.outputs.commit }}
+      RETRY: ${{ inputs.retry }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: saintmili/mtl
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Revalidate against current refs
+        id: release
+        run: |
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*' --tags
+          args=()
+          if [[ "$RETRY" == true ]]; then args+=(--retry); fi
+          python3 scripts/validate_release.py "$VERSION" "$COMMIT" "${args[@]}" >> "$GITHUB_OUTPUT"
+      - name: Publish immutable tag
+        if: steps.release.outputs.exists == 'false'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a "$VERSION" "$COMMIT" -m "Release $VERSION"
+          git push origin "refs/tags/$VERSION:refs/tags/$VERSION"
+      - name: Verify module availability
+        env:
+          GOPROXY: https://proxy.golang.org
+          GOSUMDB: sum.golang.org
+          GOWORK: 'off'
+        working-directory: ${{ runner.temp }}
+        run: |
+          for attempt in {1..12}; do
+            if go list -m "github.com/saintmili/mtl@$VERSION"; then exit 0; fi
+            if [[ "$attempt" -lt 12 ]]; then sleep 20; fi
+          done
+          echo 'Go proxy has not resolved the module; retry this release with the same version and commit.' >&2
+          exit 1
+      - name: Publish release notes
+        env:
+          PREVIOUS: ${{ steps.release.outputs.previous }}
+        run: |
+          if gh release view "$VERSION" --json isDraft,isPrerelease > "$RUNNER_TEMP/release.json"; then
+            python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); sys.exit(1 if r["isDraft"] or r["isPrerelease"] else 0)' "$RUNNER_TEMP/release.json"
+          else
+            args=()
+            if [[ -n "$PREVIOUS" ]]; then args+=(--notes-start-tag "$PREVIOUS"); fi
+            gh release create "$VERSION" --verify-tag --title "$VERSION" --generate-notes "${args[@]}"
+          fi

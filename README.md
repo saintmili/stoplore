@@ -14,6 +14,7 @@ recorded costs, risk comparisons, and performance reports on CSV and PostgreSQL.
   Go API testing seam.
 - [Domain glossary](GLOSSARY.md): the language used throughout the design.
 - [Architecture decisions](docs/adr/): the reasoning behind lasting design choices.
+- [Release policy and publishing instructions](docs/releasing.md).
 
 ## Exchange accounts and fees
 
