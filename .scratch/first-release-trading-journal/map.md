@@ -31,3 +31,9 @@ merged into the integration branch after its dependencies are resolved.
   validation, CSV/PostgreSQL reopen behavior and shared public API harness.
   New versioned storage preserves legacy source records. Decimal division is
   explicitly rounded to 18 fractional places, half away from zero.
+
+- [03: Record and inspect a trade with its first entry](issues/03-record-and-inspect-a-trade-with-its-first-entry.md)
+  resolved: public record/get/list API preserves explicit fills, account and setup
+  version context, optional margin/leverage, and snapshotted entry fees. Shared
+  CSV/PostgreSQL behaviors verify reopen, errors, decimal inputs, and 18-place
+  half-away-from-zero calculated fees.
