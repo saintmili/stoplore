@@ -37,3 +37,8 @@ merged into the integration branch after its dependencies are resolved.
   version context, optional margin/leverage, and snapshotted entry fees. Shared
   CSV/PostgreSQL behaviors verify reopen, errors, decimal inputs, and 18-place
   half-away-from-zero calculated fees.
+
+- [08: Tag trades and review rule adherence](issues/08-tag-trades-and-review-rule-adherence.md)
+  resolved: contextual tags and optional followed/deviated/unassessed reviews
+  retain previous tags, assessments, notes, and UTC correction timestamps.
+  Shared public API tests verify CSV/PostgreSQL reopening and invalid updates.

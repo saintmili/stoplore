@@ -46,6 +46,9 @@ type ExecutionRequest struct {
 }
 
 type Trade struct {
+	ReviewHistory      []ReviewCorrection
+	Tags               []string
+	Review             TradeReview
 	ID                 uuid.UUID
 	AccountID          uuid.UUID
 	SetupVersionID     uuid.UUID
