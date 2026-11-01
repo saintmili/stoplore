@@ -32,6 +32,8 @@ type SetupPerformance struct {
 }
 
 type PerformanceReport struct {
+	// Completed contains the eligible completed trades selected by the filter.
+	Completed []CompletedTradeResult
 	CostBasis CostBasis
 	Groups    []SetupPerformance
 	Ongoing   []Trade
@@ -85,7 +87,7 @@ func (s *Service) ReportPerformance(ctx context.Context, filter ReportFilter) (P
 	}
 	groups := map[key]*SetupPerformance{}
 	positive, negative := map[key]Decimal{}, map[key]Decimal{}
-	report := PerformanceReport{CostBasis: RecordedCosts, Groups: []SetupPerformance{}, Ongoing: []Trade{}}
+	report := PerformanceReport{CostBasis: RecordedCosts, Completed: []CompletedTradeResult{}, Groups: []SetupPerformance{}, Ongoing: []Trade{}}
 	for _, trade := range trades {
 		if !matchesReport(trade, filter) {
 			continue
@@ -108,6 +110,7 @@ func (s *Service) ReportPerformance(ctx context.Context, filter ReportFilter) (P
 			g.ExcludedCount++
 			continue
 		}
+		report.Completed = append(report.Completed, completedTradeResult(trade))
 		g.EligibleCount++
 		g.TotalNetProfit = g.TotalNetProfit.Add(trade.NetProfitLoss)
 		switch {
@@ -141,6 +144,9 @@ func (s *Service) ReportPerformance(ctx context.Context, filter ReportFilter) (P
 			return a.SetupVersionID.String() < b.SetupVersionID.String()
 		}
 		return a.SettlementCurrency < b.SettlementCurrency
+	})
+	sort.Slice(report.Completed, func(i, j int) bool {
+		return report.Completed[i].TradeID.String() < report.Completed[j].TradeID.String()
 	})
 	sort.Slice(report.Ongoing, func(i, j int) bool { return report.Ongoing[i].ID.String() < report.Ongoing[j].ID.String() })
 	return report, nil

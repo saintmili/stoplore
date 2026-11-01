@@ -110,3 +110,12 @@ means paid. `Trade.FundingPayments` retains the payments with their IDs and exac
 timestamps, while `RecordedFunding` is their signed total. Funding is optional:
 no payments means zero recorded funding and requires no confirmation. Net results
 always expose `RecordedCosts`, because omitted payments may have occurred.
+
+`RecordTradeRequest.OriginalPlannedRisk` is an optional settlement-currency budget
+for the whole trade. Plan revisions do not change this original baseline.
+`ReportPerformance.Completed` lists eligible completed trades selected by the
+same report filter, ordered by trade UUID, with net results, original risk, and
+`RMultiple`. R divides net profit by positive original risk using the documented
+18-place rounding rule. Nil, zero, or negative risk returns nil R while preserving
+monetary eligibility. `CorrectOriginalPlannedRisk` fixes a mistaken budget with a
+required date and reason; `Trade.RiskCorrections` retains before/after values.

@@ -93,6 +93,9 @@ func TestCSVImportReviewConfirmationAndReportsSurviveReopen(t *testing.T) {
 			t.Fatalf("reopen: %+v %v", got, err)
 		}
 		report, err = s.ReportPerformance(ctx, mtl.ReportFilter{})
+		if len(report.Completed) != 1 || report.Completed[0].TradeID != tr.ID || report.Completed[0].RMultiple != nil || report.Completed[0].OriginalPlannedRisk != nil {
+			t.Fatalf("confirmed migration without historical risk: %+v", report.Completed)
+		}
 		if err != nil || len(report.Groups) != 1 || report.Groups[0].EligibleCount != 1 || report.Groups[0].ExcludedCount != 0 || report.Groups[0].TotalNetProfit.String() != "19.7" {
 			t.Fatalf("confirmed report %+v %v", report, err)
 		}
