@@ -40,7 +40,7 @@ func (s *journalState) put(key string, value any) error {
 	return nil
 }
 func decodeState(data []byte) (*journalState, error) {
-	s := emptyJournalState()
+	s := &journalState{}
 	if err := json.Unmarshal(data, s); err != nil {
 		return nil, fmt.Errorf("journal state: %w", err)
 	}

@@ -1,6 +1,6 @@
 # MTL first release: personal trade journaling and setup performance
 
-Status: ready-for-agent
+Status: resolved
 
 The product design and public Go API testing seam are approved. This
 specification is published to the local Markdown issue tracker.
@@ -305,3 +305,20 @@ behavior suite against CSV and PostgreSQL.
   Status: ready-for-agent after approval of the tracker configuration, default
   triage vocabulary, and public Go API testing seam. The specification is ready
   for agent implementation.
+
+
+## Answer
+
+Implemented all thirteen tickets through the approved public Go API seam on CSV
+and PostgreSQL. Trades preserve explicit executions, weighted-average positions,
+versioned setups, original plans and revisions, review context, recorded fees and
+funding, original risk, and dated correction histories. Reports group completed
+trades by setup version and settlement currency and expose excluded imports.
+Source-preserving CSV and PostgreSQL migration requires confirmation of missing
+or inferred essentials, including selection of a named setup when absent.
+
+Final review unified execution accounting with correction replay, added trade
+context corrections without repricing historical fees, rejected incomplete stored
+journal documents, and covered legacy CSV rows beneath current headers and mixed
+row layouts. The complete test suite passed with both CSV and isolated PostgreSQL
+backends; `go vet ./...` passed. See [the implementation map](map.md).

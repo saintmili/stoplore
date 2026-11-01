@@ -56,6 +56,7 @@ type ExecutionRequest struct {
 }
 
 type Trade struct {
+	ContextCorrections  []TradeContextCorrection
 	Migration           *MigrationEvidence
 	RiskCorrections     []RiskCorrection
 	OriginalPlannedRisk *Decimal
@@ -154,7 +155,10 @@ func (s *Service) RecordTrade(ctx context.Context, req RecordTradeRequest) (Trad
 		if err != nil {
 			return err
 		}
-		trade = Trade{OriginalPlannedRisk: req.OriginalPlannedRisk, OriginalPlan: req.OriginalPlan, ID: uuid.New(), AccountID: req.AccountID, SetupVersionID: req.SetupVersionID, Symbol: req.Symbol, Direction: req.Direction, SettlementCurrency: req.SettlementCurrency, CreatedAt: time.Now().UTC(), TotalExecutionFees: fee.Amount, NetProfitLoss: fee.Amount.Neg(), CostBasis: RecordedCosts, RemainingQuantity: entry.Quantity, AverageEntryPrice: entry.Price, Executions: []Execution{{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: fee}}}
+		trade = Trade{OriginalPlannedRisk: req.OriginalPlannedRisk, OriginalPlan: req.OriginalPlan, ID: uuid.New(), AccountID: req.AccountID, SetupVersionID: req.SetupVersionID, Symbol: req.Symbol, Direction: req.Direction, SettlementCurrency: req.SettlementCurrency, CreatedAt: time.Now().UTC(), Executions: []Execution{{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: fee}}}
+		if err := replayTrade(&trade); err != nil {
+			return err
+		}
 		trades, err := loadTrades(state)
 		if err != nil {
 			return err

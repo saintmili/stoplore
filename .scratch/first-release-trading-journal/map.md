@@ -100,3 +100,14 @@ merged into the integration branch after its dependencies are resolved.
   notes. Synthetic PostgreSQL source fixtures verify both target backends,
   unchanged source rows, reopen, optional funding, confirmation-driven reports,
   retries, and atomic failures for unreadable sources.
+
+
+## Final implementation review
+
+All thirteen tickets and the [specification](spec.md#answer) are resolved. Final
+review closed missing persisted-collection validation, unified execution and
+correction accounting, added durable trade-context corrections with unchanged fee
+snapshots, required named setups for migration confirmation and report eligibility,
+and supported legacy CSV row order beneath current headers and mixed layouts while
+preserving source evidence. Public API regressions and the full suite passed on
+CSV and isolated PostgreSQL; `go vet ./...` passed.

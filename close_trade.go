@@ -67,18 +67,9 @@ func (s *Service) recordExit(ctx context.Context, req CloseTradeRequest, complet
 		if err != nil {
 			return err
 		}
-		pnl := exit.Price.Sub(trade.AverageEntryPrice).Mul(exit.Quantity)
-		if trade.Direction == Short {
-			pnl = pnl.Neg()
-		}
 		trade.Executions = append(trade.Executions, Execution{ID: uuid.New(), Kind: Exit, Quantity: exit.Quantity, Price: exit.Price, ExecutedAt: exit.ExecutedAt, Margin: exit.Margin, Leverage: exit.Leverage, Fee: fee})
-		trade.RealizedPriceProfitLoss = trade.RealizedPriceProfitLoss.Add(pnl)
-		trade.TotalExecutionFees = trade.TotalExecutionFees.Add(fee.Amount)
-		trade.NetProfitLoss = trade.RealizedPriceProfitLoss.Sub(trade.TotalExecutionFees).Add(trade.RecordedFunding)
-		trade.CostBasis = RecordedCosts
-		trade.RemainingQuantity = trade.RemainingQuantity.Sub(exit.Quantity)
-		if trade.RemainingQuantity.IsZero() {
-			trade.CompletedAt = &exit.ExecutedAt
+		if err := replayTrade(&trade); err != nil {
+			return err
 		}
 		trades[trade.ID.String()] = trade
 		return state.put("trades", trades)
