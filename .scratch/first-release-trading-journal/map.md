@@ -43,3 +43,8 @@ merged into the integration branch after its dependencies are resolved.
   realized profit, execution costs, completion time, and recorded-cost net result.
   Shared CSV/PostgreSQL behavior verifies reopening, long/short results, distinct
   rates, explicit zero fees, and meaningful rejection without journal changes.
+
+- [07: Preserve original plans and dated revisions](issues/07-preserve-original-plans-and-dated-revisions.md)
+  resolved: optional original plans and dated full-plan snapshots preserve decision
+  history; corrections keep before/after values and explanations without adding
+  decisions. Shared public API tests cover CSV and PostgreSQL reopening.

@@ -53,6 +53,9 @@ type ExecutionRequest struct {
 }
 
 type Trade struct {
+	OriginalPlan            *TradePlan
+	PlanRevisions           []PlanRevision
+	PlanCorrections         []PlanCorrection
 	ID                      uuid.UUID
 	AccountID               uuid.UUID
 	SetupVersionID          uuid.UUID
@@ -72,6 +75,7 @@ type Trade struct {
 }
 
 type RecordTradeRequest struct {
+	OriginalPlan       *TradePlan
 	AccountID          uuid.UUID
 	SetupVersionID     uuid.UUID
 	Symbol             string
@@ -89,6 +93,9 @@ func loadTrades(state *journalState) (map[string]Trade, error) {
 }
 
 func (s *Service) RecordTrade(ctx context.Context, req RecordTradeRequest) (Trade, error) {
+	if err := validateTradePlan(req.OriginalPlan); err != nil {
+		return Trade{}, err
+	}
 	req.Symbol = strings.TrimSpace(req.Symbol)
 	if req.AccountID == uuid.Nil || req.SetupVersionID == uuid.Nil || req.Symbol == "" {
 		return Trade{}, fmt.Errorf("%w: account, setup version and symbol are required", ErrInvalidRequest)
@@ -132,7 +139,7 @@ func (s *Service) RecordTrade(ctx context.Context, req RecordTradeRequest) (Trad
 		}
 		entry := req.FirstEntry
 		fee := entry.Quantity.Mul(entry.Price).Mul(*exchange.EntryFeeRate).DivRound(MustDecimal("100"), 18)
-		trade = Trade{ID: uuid.New(), AccountID: req.AccountID, SetupVersionID: req.SetupVersionID, Symbol: req.Symbol, Direction: req.Direction, SettlementCurrency: req.SettlementCurrency, CreatedAt: time.Now().UTC(), TotalExecutionFees: fee, NetProfitLoss: fee.Neg(), CostBasis: RecordedCosts, RemainingQuantity: entry.Quantity, AverageEntryPrice: entry.Price, Executions: []Execution{{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: ExecutionFee{Rate: exchange.EntryFeeRate, Amount: fee}}}}
+		trade = Trade{OriginalPlan: req.OriginalPlan, ID: uuid.New(), AccountID: req.AccountID, SetupVersionID: req.SetupVersionID, Symbol: req.Symbol, Direction: req.Direction, SettlementCurrency: req.SettlementCurrency, CreatedAt: time.Now().UTC(), TotalExecutionFees: fee, NetProfitLoss: fee.Neg(), CostBasis: RecordedCosts, RemainingQuantity: entry.Quantity, AverageEntryPrice: entry.Price, Executions: []Execution{{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: ExecutionFee{Rate: exchange.EntryFeeRate, Amount: fee}}}}
 		trades, err := loadTrades(state)
 		if err != nil {
 			return err
