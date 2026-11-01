@@ -33,7 +33,7 @@ Before running commands that may write files or caches, consider whether the use
 
 ### Issue tracker
 
-Specs and tickets use local Markdown. Before reading or publishing them, read
+Specs and tickets use GitHub Issues. Before reading or publishing them, read
 `docs/agents/issue-tracker.md`.
 
 ### Triage labels
