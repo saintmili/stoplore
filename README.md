@@ -37,3 +37,27 @@ account, err := service.CreateAccount(ctx, mtl.CreateAccountRequest{
 The same API works with `NewWithPostgres(pool, key)`. See the
 [decimal and storage contract](docs/decimal-and-storage.md) for exact decimal
 units, missing-value behavior, rounding, and backend test setup.
+
+## Migrate existing PostgreSQL records
+
+Initialize the destination service with either backend, then pass a separate
+`pgxpool.Pool` connected to the legacy database and schema:
+
+```go
+imported, err := service.ImportPostgres(ctx, mtl.PostgresImportRequest{
+    Source: legacyPool, SourceID: "my-old-journal", SourceKey: legacyNotesKey,
+})
+```
+
+The caller owns `legacyPool`; its search path selects the source `trades` table.
+The reader uses a read-only snapshot and never initializes source storage. Supply
+a stable, nonsecret `SourceID` for retries and the old notes key only when source
+notes are encrypted. The target's encryption configuration is independent.
+Original fields, including source ciphertext, remain in migration evidence;
+reviewable notes are decrypted. PostgreSQL's stored numeric and timestamp
+precision is preserved.
+
+Imported trades appear immediately through `ListTrades`, `GetTrade`, and
+`ReviewMigration`. Use `ConfirmMigration` to supply the actual account, settlement
+currency, executions, and actual fees before performance report eligibility.
+Unknown historical rules and plans remain unknown, and funding stays optional.
