@@ -93,3 +93,10 @@ merged into the integration branch after its dependencies are resolved.
   per-trade completed report results expose net-profit R or explicit unavailability
   without monetary exclusion. Budget corrections preserve before/after history.
   Shared CSV/PostgreSQL public API tests verify reopening and the 2R example.
+
+- [13: Extend migration to existing PostgreSQL records](issues/13-extend-migration-to-existing-postgresql-records.md)
+  resolved: a read-only snapshot reader with separate source notes decryption
+  feeds the shared importer, retaining original fields/ciphertext and reviewable
+  notes. Synthetic PostgreSQL source fixtures verify both target backends,
+  unchanged source rows, reopen, optional funding, confirmation-driven reports,
+  retries, and atomic failures for unreadable sources.
