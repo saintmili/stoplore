@@ -7,35 +7,45 @@ import (
 )
 
 type Service struct {
-	storage StorageContract
-	ctx     context.Context
-	Journal *Journal
-	Exchange ExchangeService
+	documents documentStore
+	storage   StorageContract
+	ctx       context.Context
+	Journal   *Journal
+	Exchange  ExchangeService
 }
 
 func NewWithPostgres(db *pgxpool.Pool, key []byte) *Service {
 	storage := newPostgresStorage(db, key)
 	j := newJournal(storage)
 	ctx := context.Background()
-	return &Service{
+	s := &Service{
 		storage: storage,
 		ctx:     ctx,
 		Journal: j,
 	}
+	s.documents = &postgresDocuments{db: db}
+	s.Exchange = ExchangeService{service: s}
+	return s
 }
 
 func NewWithCSV(path string) *Service {
 	storage := newCSVStorage(path)
 	j := newJournal(storage)
 	ctx := context.Background()
-	return &Service{
+	s := &Service{
 		storage: storage,
 		ctx:     ctx,
 		Journal: j,
 	}
+	s.documents = &csvDocuments{dir: path}
+	s.Exchange = ExchangeService{service: s}
+	return s
 }
 
 func (s *Service) Init() error {
+	if err := s.documents.init(s.ctx); err != nil {
+		return err
+	}
 	return s.storage.Init(s.ctx)
 }
 
