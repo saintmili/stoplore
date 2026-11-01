@@ -325,3 +325,65 @@ func TestShortExecutionCorrectionRecalculatesDirectionalResult(t *testing.T) {
 		}
 	})
 }
+
+func TestTradeContextCorrectionPreservesHistoryFeesAndReports(t *testing.T) {
+	forEachBackend(t, func(t *testing.T, b backend) {
+		s, trade, at := correctionTrade(t, b)
+		ctx := context.Background()
+		trade, err := s.CloseTrade(ctx, mtl.CloseTradeRequest{TradeID: trade.ID, Exit: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("130"), ExecutedAt: at.Add(2 * time.Hour)}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		previous, err := s.GetTrade(ctx, trade.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rate := mtl.MustDecimal("9")
+		ex, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Correct venue", EntryFeeRate: &rate, ExitFeeRate: &rate})
+		if err != nil {
+			t.Fatal(err)
+		}
+		account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: ex.ID, Name: "Correct account"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		setup, err := s.CreateSetup(ctx, mtl.CreateSetupRequest{Name: "Correct setup", Rules: "Correct rules"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := mtl.CorrectTradeContextRequest{TradeID: trade.ID, AccountID: account.ID, SetupVersionID: setup.Versions[0].ID, Symbol: " ETHUSDC ", Direction: mtl.Short, SettlementCurrency: "USDC"}
+		trade, err = s.CorrectTradeContext(ctx, req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err = b.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		trade, err = s.GetTrade(ctx, trade.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if trade.AccountID != account.ID || trade.SetupVersionID != setup.Versions[0].ID || trade.Symbol != "ETHUSDC" || trade.Direction != mtl.Short || trade.SettlementCurrency != "USDC" || trade.RealizedPriceProfitLoss.String() != "-60" || trade.NetProfitLoss.String() != "-64.6" {
+			t.Fatalf("corrected context: %+v", trade)
+		}
+		if !reflect.DeepEqual(trade.Executions, previous.Executions) || len(trade.ContextCorrections) != 1 || trade.ContextCorrections[0].Previous.AccountID != previous.AccountID || trade.ContextCorrections[0].Previous.SetupVersionID != previous.SetupVersionID || trade.ContextCorrections[0].Previous.Symbol != previous.Symbol || trade.ContextCorrections[0].Previous.Direction != previous.Direction || trade.ContextCorrections[0].Previous.SettlementCurrency != previous.SettlementCurrency || trade.ContextCorrections[0].CorrectedAt.IsZero() {
+			t.Fatalf("history and snapshots: %+v", trade)
+		}
+		report, err := s.ReportPerformance(ctx, mtl.ReportFilter{Symbol: "ETHUSDC", Direction: mtl.Short})
+		if err != nil || len(report.Groups) != 1 || report.Groups[0].SetupName != "Correct setup" || report.Groups[0].SettlementCurrency != "USDC" || report.Groups[0].TotalNetProfit.String() != "-64.6" {
+			t.Fatalf("report: %+v %v", report, err)
+		}
+		for _, mutate := range []func(*mtl.CorrectTradeContextRequest){func(r *mtl.CorrectTradeContextRequest) { r.AccountID = uuid.New() }, func(r *mtl.CorrectTradeContextRequest) { r.SetupVersionID = uuid.New() }, func(r *mtl.CorrectTradeContextRequest) { r.Symbol = " " }, func(r *mtl.CorrectTradeContextRequest) { r.Direction = "SIDEWAYS" }, func(r *mtl.CorrectTradeContextRequest) { r.SettlementCurrency = "BTC" }} {
+			invalid := req
+			mutate(&invalid)
+			if _, err := s.CorrectTradeContext(ctx, invalid); err == nil {
+				t.Fatal("invalid context accepted")
+			}
+			got, err := s.GetTrade(ctx, trade.ID)
+			if err != nil || !reflect.DeepEqual(got, trade) {
+				t.Fatalf("invalid correction changed trade: %+v %v", got, err)
+			}
+		}
+	})
+}

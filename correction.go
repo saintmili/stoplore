@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -178,4 +179,79 @@ func (s *Service) CorrectFundingPayment(ctx context.Context, req CorrectFundingP
 		}
 		return fmt.Errorf("%w: funding payment %s", ErrNotFound, req.FundingPaymentID)
 	})
+}
+
+// TradeContext is the journal context independent of executions and decisions.
+type TradeContext struct {
+	AccountID          uuid.UUID
+	SetupVersionID     uuid.UUID
+	Symbol             string
+	Direction          TradeDirection
+	SettlementCurrency string
+}
+
+type TradeContextCorrection struct {
+	Previous    TradeContext
+	CorrectedAt time.Time
+}
+
+type CorrectTradeContextRequest struct {
+	TradeID            uuid.UUID
+	AccountID          uuid.UUID
+	SetupVersionID     uuid.UUID
+	Symbol             string
+	Direction          TradeDirection
+	SettlementCurrency string
+}
+
+func (s *Service) CorrectTradeContext(ctx context.Context, req CorrectTradeContextRequest) (Trade, error) {
+	req.Symbol = strings.TrimSpace(req.Symbol)
+	if req.AccountID == uuid.Nil || req.SetupVersionID == uuid.Nil || req.Symbol == "" || (req.Direction != Long && req.Direction != Short) || (req.SettlementCurrency != "USDT" && req.SettlementCurrency != "USDC") {
+		return Trade{}, fmt.Errorf("%w: valid account, named setup version, symbol, direction and settlement currency are required", ErrInvalidRequest)
+	}
+	var result Trade
+	err := s.update(ctx, func(state *journalState) error {
+		if _, ok := state.Accounts[req.AccountID.String()]; !ok {
+			return fmt.Errorf("%w: account %s", ErrNotFound, req.AccountID)
+		}
+		if err := requireNamedSetupVersion(state, req.SetupVersionID); err != nil {
+			return err
+		}
+		trades, err := loadTrades(state)
+		if err != nil {
+			return err
+		}
+		trade, ok := trades[req.TradeID.String()]
+		if !ok {
+			return fmt.Errorf("%w: trade %s", ErrNotFound, req.TradeID)
+		}
+		previous := TradeContext{AccountID: trade.AccountID, SetupVersionID: trade.SetupVersionID, Symbol: trade.Symbol, Direction: trade.Direction, SettlementCurrency: trade.SettlementCurrency}
+		trade.AccountID, trade.SetupVersionID, trade.Symbol, trade.Direction, trade.SettlementCurrency = req.AccountID, req.SetupVersionID, req.Symbol, req.Direction, req.SettlementCurrency
+		if err := replayTrade(&trade); err != nil {
+			return err
+		}
+		trade.ContextCorrections = append(trade.ContextCorrections, TradeContextCorrection{Previous: previous, CorrectedAt: time.Now().UTC()})
+		trades[trade.ID.String()] = trade
+		result = trade
+		return state.put("trades", trades)
+	})
+	if err != nil {
+		return Trade{}, err
+	}
+	return result, nil
+}
+
+func requireNamedSetupVersion(state *journalState, id uuid.UUID) error {
+	setups := map[string]Setup{}
+	if err := state.get("setups", &setups); err != nil {
+		return err
+	}
+	for _, setup := range setups {
+		for _, version := range setup.Versions {
+			if version.ID == id && strings.TrimSpace(setup.Name) != "" {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("%w: named setup version %s", ErrNotFound, id)
 }

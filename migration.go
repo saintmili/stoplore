@@ -70,11 +70,15 @@ func (s *Service) ImportCSV(ctx context.Context, req CSVImportRequest) ([]Trade,
 		if err != nil {
 			return nil, fmt.Errorf("migration row %d: %w", line, err)
 		}
+		rowHeader, rowFormat := header, format
+		if format == "csv-current" && !Side(row[4]).IsValid() && Side(row[2]).IsValid() {
+			rowHeader, rowFormat = legacy, "csv-legacy"
+		}
 		fields := map[string]string{}
-		for i, key := range header {
+		for i, key := range rowHeader {
 			fields[key] = row[i]
 		}
-		records = append(records, migrationRecord{Fields: fields, Format: format, OriginalHeader: header, OriginalFields: row})
+		records = append(records, migrationRecord{Fields: fields, Format: rowFormat, OriginalHeader: header, OriginalFields: row})
 	}
 	source := strings.TrimSpace(req.SourceID)
 	if source == "" {
@@ -117,6 +121,12 @@ func (s *Service) importMigrationRecords(ctx context.Context, sourceID string, r
 					return fmt.Errorf("%w: source record changed since import", ErrInvalidRequest)
 				}
 				result = append(result, existing)
+				continue
+			}
+			if strings.TrimSpace(trade.Migration.Fields["STRATEGY"]) == "" {
+				trade.PendingEssentials = append(trade.PendingEssentials, "setup")
+				trades[trade.ID.String()] = trade
+				result = append(result, trade)
 				continue
 			}
 			// Historical strategy names are known, but their rules were never stored.
@@ -258,6 +268,7 @@ type MigrationExecution struct {
 
 type ConfirmMigrationRequest struct {
 	TradeID, AccountID uuid.UUID
+	SetupVersionID     uuid.UUID
 	SettlementCurrency string
 	Executions         []MigrationExecution
 	ConfirmTrade       bool
@@ -298,6 +309,12 @@ func (s *Service) ConfirmMigration(ctx context.Context, req ConfirmMigrationRequ
 		}
 		if tr.Migration.Fields["ENTRYTYPE"] != "TRADE" && !req.ConfirmTrade {
 			return fmt.Errorf("%w: confirm source record represents a trade", ErrInvalidRequest)
+		}
+		if req.SetupVersionID != uuid.Nil {
+			tr.SetupVersionID = req.SetupVersionID
+		}
+		if err := requireNamedSetupVersion(state, tr.SetupVersionID); err != nil {
+			return err
 		}
 		tr.AccountID = req.AccountID
 		tr.SettlementCurrency = req.SettlementCurrency

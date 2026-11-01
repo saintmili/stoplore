@@ -4,14 +4,14 @@ A Go library for recording and analyzing a personal trading journal.
 
 ## Design documentation
 
-The first-release design is accepted; it describes the target behavior, which is
-not yet fully implemented in the current library.
+The first-release journal supports executions, versioned setups, plans, corrections,
+recorded costs, risk comparisons, and performance reports on CSV and PostgreSQL.
 
 - [First-release design](docs/first-release-design.md): scope, behavior, reporting,
   migration, and acceptance examples.
 - [First-release specification](.scratch/first-release-trading-journal/spec.md):
-  published with status `ready-for-agent`, including user stories, implementation
-  decisions, and the approved testing seam.
+  resolved with user stories, implementation decisions, and the approved public
+  Go API testing seam.
 - [Domain glossary](GLOSSARY.md): the language used throughout the design.
 - [Architecture decisions](docs/adr/): the reasoning behind lasting design choices.
 
@@ -60,4 +60,11 @@ precision is preserved.
 Imported trades appear immediately through `ListTrades`, `GetTrade`, and
 `ReviewMigration`. Use `ConfirmMigration` to supply the actual account, settlement
 currency, executions, and actual fees before performance report eligibility.
+For records without a strategy name, also select a named setup version with
+`ConfirmMigrationRequest.SetupVersionID`. CSV imports support current and legacy
+row layouts, including legacy rows beneath a current header.
 Unknown historical rules and plans remain unknown, and funding stays optional.
+
+Use `CorrectTradeContext` to correct the account, setup version, symbol, direction,
+or settlement currency. It retains previous context and recalculates results while
+preserving execution fee snapshots.

@@ -106,7 +106,7 @@ func (s *Service) ReportPerformance(ctx context.Context, filter ReportFilter) (P
 			g = &SetupPerformance{SetupID: id.setup.ID, SetupName: id.setup.Name, SetupVersionID: trade.SetupVersionID, SetupVersion: id.version.Version, SettlementCurrency: trade.SettlementCurrency}
 			groups[k] = g
 		}
-		if !reportEligible(trade, identities[trade.SetupVersionID].version.ID != uuid.Nil) {
+		if !reportEligible(trade, identities[trade.SetupVersionID].version.ID != uuid.Nil && strings.TrimSpace(identities[trade.SetupVersionID].setup.Name) != "") {
 			g.ExcludedCount++
 			continue
 		}

@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"fmt"
+	"github.com/google/uuid"
 	mtl "github.com/saintmili/mtl"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -267,6 +270,121 @@ func TestMigrationRejectsInvalidBatchesAndIncompleteConfirmationAtomically(t *te
 		}
 		if _, err := os.Stat(missing); !os.IsNotExist(err) {
 			t.Fatal("source created", err)
+		}
+	})
+}
+
+func TestMigrationRequiresNamedSetupBeforeConfirmation(t *testing.T) {
+	forEachBackend(t, func(t *testing.T, b backend) {
+		ctx := context.Background()
+		s, err := b.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		row := syntheticImportRow()
+		row[2] = "  "
+		path, _ := importFixture(t, importHeader, row)
+		imported, err := s.ImportCSV(ctx, mtl.CSVImportRequest{Path: path})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if imported[0].SetupVersionID != uuid.Nil {
+			t.Fatal("blank strategy created unnamed setup")
+		}
+		pending := false
+		for _, essential := range imported[0].PendingEssentials {
+			if essential == "setup" {
+				pending = true
+			}
+		}
+		if !pending {
+			t.Fatal("missing setup not pending")
+		}
+		ex, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Venue"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: ex.ID, Name: "Main"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		req := mtl.ConfirmMigrationRequest{TradeID: imported[0].ID, AccountID: account.ID, SettlementCurrency: "USDT", Executions: []mtl.MigrationExecution{{Kind: mtl.Entry, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("100"), ExecutedAt: at, ActualFee: decimalPtr("0")}}, {Kind: mtl.Exit, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("120"), ExecutedAt: at.Add(time.Hour), ActualFee: decimalPtr("0")}}}}
+		if _, err = s.ConfirmMigration(ctx, req); err == nil {
+			t.Fatal("confirmed without named setup")
+		}
+		setup, err := s.CreateSetup(ctx, mtl.CreateSetupRequest{Name: "Historical setup", Rules: "Known rules"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.SetupVersionID = setup.Versions[0].ID
+		if _, err = s.ConfirmMigration(ctx, req); err != nil {
+			t.Fatal(err)
+		}
+		s, err = b.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		report, err := s.ReportPerformance(ctx, mtl.ReportFilter{})
+		if err != nil || len(report.Groups) != 1 || report.Groups[0].EligibleCount != 1 || report.Groups[0].SetupName != "Historical setup" {
+			t.Fatalf("confirmed report: %+v %v", report, err)
+		}
+		tr, err := s.ReviewMigration(ctx, imported[0].ID)
+		if err != nil || tr.Migration.Fields["STRATEGY"] != "  " || len(tr.PendingEssentials) != 0 {
+			t.Fatalf("evidence: %+v %v", tr, err)
+		}
+	})
+}
+
+func TestCSVImportLegacyRowsUnderCurrentHeaderAndMixedLayouts(t *testing.T) {
+	forEachBackend(t, func(t *testing.T, b backend) {
+		legacyHeader := []string{"ID", "SYMBOL", "SIDE", "EXCHANGE", "ENTRYTYPE", "ORDERTYPE", "STRATEGY", "LEVERAGE", "TIMEFRAME", "ENTRYPRICE", "POSITIONMARGIN", "ENTRYFEERATE", "ENTRYMENTALSTATE", "ENTRYIMAGEURL", "OPENEDAT", "EXITPRICE", "EXITFEERATE", "EXITMENTALSTATE", "EXITIMAGEURL", "EXITEDAT", "TAKEPROFITPRICE", "STOPLOSSPRICE", "EXITMARGINPERCENT", "NOTES", "CREATEDAT", "UPDATEDAT"}
+		current := syntheticImportRow()
+		legacy := make([]string, len(legacyHeader))
+		for i, key := range legacyHeader {
+			for j, name := range importHeader {
+				if key == name {
+					legacy[i] = current[j]
+				}
+			}
+		}
+		for _, mixed := range []bool{false, true} {
+			t.Run(fmt.Sprint(mixed), func(t *testing.T) {
+				s, err := b.Open()
+				if err != nil {
+					t.Fatal(err)
+				}
+				path, _ := importFixture(t, importHeader, legacy)
+				rows := [][]string{importHeader, legacy}
+				if mixed {
+					current[0] = uuid.NewString()
+					rows = append(rows, current)
+				}
+				var data bytes.Buffer
+				w := csv.NewWriter(&data)
+				if err = w.WriteAll(rows); err != nil {
+					t.Fatal(err)
+				}
+				if err = os.WriteFile(path, data.Bytes(), 0600); err != nil {
+					t.Fatal(err)
+				}
+				trades, err := s.ImportCSV(context.Background(), mtl.CSVImportRequest{Path: path})
+				if err != nil || len(trades) != len(rows)-1 {
+					t.Fatalf("import: %+v %v", trades, err)
+				}
+				s, err = b.Open()
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, err := s.ReviewMigration(context.Background(), trades[0].ID)
+				if err != nil || got.Symbol != "BTCUSDT" || got.Migration.Format != "csv-legacy" || got.Migration.Fields["STRATEGY"] != "Breakout" || got.Executions[1].Price.String() != "120" || !reflect.DeepEqual(got.Migration.OriginalHeader, importHeader) || !reflect.DeepEqual(got.Migration.OriginalFields, legacy) {
+					t.Fatalf("legacy evidence: %+v %v", got, err)
+				}
+				unchanged, err := os.ReadFile(path)
+				if err != nil || !bytes.Equal(unchanged, data.Bytes()) {
+					t.Fatal("source changed", err)
+				}
+			})
 		}
 	})
 }
