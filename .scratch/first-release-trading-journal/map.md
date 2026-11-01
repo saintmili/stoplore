@@ -53,3 +53,9 @@ merged into the integration branch after its dependencies are resolved.
   resolved: contextual tags and optional followed/deviated/unassessed reviews
   retain previous tags, assessments, notes, and UTC correction timestamps.
   Shared public API tests verify CSV/PostgreSQL reopening and invalid updates.
+
+- [06: Record actual fee overrides and optional funding](issues/06-record-actual-fee-overrides-and-optional-funding.md)
+  resolved: per-execution actual fees replace defaults while preserving unknown or
+  known default snapshots; signed timestamped funding adjusts net results and
+  remains optional. Shared CSV/PostgreSQL behaviors verify exact amounts,
+  recorded-cost basis, meaningful errors, and reopening.
