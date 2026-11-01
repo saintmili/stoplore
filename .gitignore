@@ -1,0 +1,38 @@
+# Go build, test, and profiling output
+/bin/
+/build/
+/dist/
+*.test
+*.exe
+*.prof
+coverage.out
+coverage.html
+/coverage/
+
+# Local Go workspace configuration
+/go.work
+/go.work.sum
+
+# Local journal data and storage artifacts
+/data/*.csv
+/journal/
+/positions.csv
+/trades.csv
+/exchanges.csv
+mtl_journal.csv
+.mtl-journal.lock
+.mtl-*.csv
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+/.aws/
+
+# Editor and operating-system artifacts
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
