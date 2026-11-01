@@ -79,3 +79,9 @@ merged into the integration branch after its dependencies are resolved.
   API cases cover metrics, filters, reopen, local date instants and corrections.
   Pending migration essentials and unknown fees exclude incomplete imports;
   ticket 12 adds migration-driven eligibility cases.
+
+- [11: Compare results against original planned risk](issues/11-compare-results-against-original-planned-risk.md)
+  resolved: optional whole-trade budgets remain fixed across plan decisions;
+  per-trade completed report results expose net-profit R or explicit unavailability
+  without monetary exclusion. Budget corrections preserve before/after history.
+  Shared CSV/PostgreSQL public API tests verify reopening and the 2R example.
