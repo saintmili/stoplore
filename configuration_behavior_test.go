@@ -91,3 +91,65 @@ func TestExchangeAccountsAndFeeDefaultsSurviveReopening(t *testing.T) {
 		}
 	})
 }
+
+func TestConfigurationValidationAndUpdates(t *testing.T) {
+	forEachBackend(t, func(t *testing.T, b backend) {
+		ctx := context.Background()
+		s, err := b.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: " "}); !errors.Is(err, mtl.ErrInvalidRequest) {
+			t.Fatalf("blank exchange: %v", err)
+		}
+		negative := mtl.MustDecimal("-0.1")
+		if _, err = s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Negative", EntryFeeRate: &negative}); !errors.Is(err, mtl.ErrInvalidRequest) {
+			t.Fatalf("negative default: %v", err)
+		}
+		exchange, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Exchange"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: " exchange "}); !errors.Is(err, mtl.ErrConflict) {
+			t.Fatalf("duplicate exchange: %v", err)
+		}
+		if _, err = s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: uuid.New(), Name: "Main"}); !errors.Is(err, mtl.ErrNotFound) {
+			t.Fatalf("missing exchange: %v", err)
+		}
+		if _, err = s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: exchange.ID, Name: " "}); !errors.Is(err, mtl.ErrInvalidRequest) {
+			t.Fatalf("blank account: %v", err)
+		}
+		account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: exchange.ID, Name: "Main"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: exchange.ID, Name: "main"}); !errors.Is(err, mtl.ErrConflict) {
+			t.Fatalf("duplicate account: %v", err)
+		}
+		if _, err = s.GetAccount(ctx, uuid.New()); !errors.Is(err, mtl.ErrNotFound) {
+			t.Fatalf("missing account: %v", err)
+		}
+		rate := mtl.MustDecimal("0.065")
+		if _, err = s.Exchange.Edit(ctx, mtl.EditExchangeRequest{ID: exchange.ID, Name: "Renamed", ExitFeeRate: &rate}); err != nil {
+			t.Fatal(err)
+		}
+		s, err = b.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		saved, err := s.Exchange.GetByName(ctx, "Renamed")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if saved.ID != exchange.ID || saved.EntryFeeRate != nil || saved.ExitFeeRate == nil || saved.ExitFeeRate.String() != "0.065" {
+			t.Fatalf("edited exchange: %+v", saved)
+		}
+		accounts, err := s.ListAccounts(ctx, exchange.ID)
+		if err != nil || len(accounts) != 1 || accounts[0] != account {
+			t.Fatalf("accounts: %+v, %v", accounts, err)
+		}
+		if _, err = s.Exchange.DeleteByID(ctx, exchange.ID.String()); !errors.Is(err, mtl.ErrConflict) {
+			t.Fatalf("account exchange deleted: %v", err)
+		}
+	})
+}

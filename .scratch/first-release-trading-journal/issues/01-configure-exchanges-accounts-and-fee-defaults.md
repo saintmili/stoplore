@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 **Spec coverage:** User stories 4, 27, 59, 60, 61, 68.
 
