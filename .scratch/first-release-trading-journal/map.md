@@ -37,3 +37,9 @@ merged into the integration branch after its dependencies are resolved.
   version context, optional margin/leverage, and snapshotted entry fees. Shared
   CSV/PostgreSQL behaviors verify reopen, errors, decimal inputs, and 18-place
   half-away-from-zero calculated fees.
+
+- [04: Fully close a trade and calculate its net result](issues/04-fully-close-a-trade-and-calculate-its-net-result.md)
+  resolved: complete exits snapshot their own fee defaults and retain directional
+  realized profit, execution costs, completion time, and recorded-cost net result.
+  Shared CSV/PostgreSQL behavior verifies reopening, long/short results, distinct
+  rates, explicit zero fees, and meaningful rejection without journal changes.
