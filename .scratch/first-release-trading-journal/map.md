@@ -59,3 +59,9 @@ merged into the integration branch after its dependencies are resolved.
   known default snapshots; signed timestamped funding adjusts net results and
   remains optional. Shared CSV/PostgreSQL behaviors verify exact amounts,
   recorded-cost basis, meaningful errors, and reopening.
+
+- [05: Scale entries and record partial exits](issues/05-scale-entries-and-record-partial-exits.md)
+  resolved: multiple entries average against remaining exposure; partial exits
+  realize directional profit and final exits complete the trading idea. Shared
+  CSV/PostgreSQL API behaviors retain fills and fees across reopening, validate
+  sequences, and verify the documented decimal rounding policy.
