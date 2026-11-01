@@ -53,6 +53,9 @@ type ExecutionRequest struct {
 }
 
 type Trade struct {
+	ReviewHistory           []ReviewCorrection
+	Tags                    []string
+	Review                  TradeReview
 	OriginalPlan            *TradePlan
 	PlanRevisions           []PlanRevision
 	PlanCorrections         []PlanCorrection

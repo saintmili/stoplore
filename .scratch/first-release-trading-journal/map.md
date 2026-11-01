@@ -48,3 +48,8 @@ merged into the integration branch after its dependencies are resolved.
   resolved: optional original plans and dated full-plan snapshots preserve decision
   history; corrections keep before/after values and explanations without adding
   decisions. Shared public API tests cover CSV and PostgreSQL reopening.
+
+- [08: Tag trades and review rule adherence](issues/08-tag-trades-and-review-rule-adherence.md)
+  resolved: contextual tags and optional followed/deviated/unassessed reviews
+  retain previous tags, assessments, notes, and UTC correction timestamps.
+  Shared public API tests verify CSV/PostgreSQL reopening and invalid updates.
