@@ -71,3 +71,11 @@ merged into the integration branch after its dependencies are resolved.
   chronological replay recalculates positions, costs, and completion instants.
   Snapshotted rates and actual overrides remain meaningful; invalid sequences
   fail atomically. Shared CSV/PostgreSQL API tests verify histories after reopen.
+
+- [10: Report completed-trade performance by setup](issues/10-report-completed-trade-performance-by-setup.md)
+  resolved: half-open final-close cohorts include lifetime recorded costs; groups
+  retain setup version and settlement currency, nil ratios distinguish unavailable
+  results, and ongoing realized activity stays separate. Shared CSV/PostgreSQL
+  API cases cover metrics, filters, reopen, local date instants and corrections.
+  Pending migration essentials and unknown fees exclude incomplete imports;
+  ticket 12 adds migration-driven eligibility cases.
