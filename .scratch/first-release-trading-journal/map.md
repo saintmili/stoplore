@@ -65,3 +65,9 @@ merged into the integration branch after its dependencies are resolved.
   realize directional profit and final exits complete the trading idea. Shared
   CSV/PostgreSQL API behaviors retain fills and fees across reopening, validate
   sequences, and verify the documented decimal rounding policy.
+
+- [09: Correct executions and cost records with history](issues/09-correct-executions-and-cost-records-with-history.md)
+  resolved: execution and funding corrections retain dated previous records;
+  chronological replay recalculates positions, costs, and completion instants.
+  Snapshotted rates and actual overrides remain meaningful; invalid sequences
+  fail atomically. Shared CSV/PostgreSQL API tests verify histories after reopen.
