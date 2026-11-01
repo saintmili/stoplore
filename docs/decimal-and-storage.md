@@ -60,3 +60,20 @@ rejects the request; changing exchange settings subsequently leaves the saved
 execution's rate and amount intact. Inputs and averages for a single entry retain
 the entered decimal value without rounding. `ListTrades` orders by journal
 creation time, with UUID as a deterministic tie breaker.
+
+`Service.CloseTrade` records a complete exit with its actual filled quantity,
+price, and timestamp. Quantity must equal the remaining position and the timestamp
+must not precede earlier executions. An already completed trade rejects further
+closure. The exit snapshots the exchange's current exit percentage and calculates
+its fee from its own quantity and price, including a configured known zero.
+Missing exit defaults reject closure without changing the trade.
+
+Trades expose `RealizedPriceProfitLoss`, `TotalExecutionFees`, `RecordedFunding`,
+and `NetProfitLoss` in their settlement currency. Directional price profit is
+exit minus average entry for long trades and average entry minus exit for shorts,
+multiplied by the exited quantity. Net result subtracts all recorded execution
+fees and adds signed recorded funding. With no funding entries, recorded funding
+is zero; `CostBasis` is `RecordedCosts`, which does not assert that no unrecorded
+payments occurred. `CompletedAt` is the final exit instant and remaining quantity
+is zero. Before closure, the first entry's fee is already included in the trade's
+recorded costs and net result.

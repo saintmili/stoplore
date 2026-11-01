@@ -19,7 +19,14 @@ const (
 
 type ExecutionKind string
 
-const Entry ExecutionKind = "ENTRY"
+const (
+	Entry ExecutionKind = "ENTRY"
+	Exit  ExecutionKind = "EXIT"
+)
+
+type CostBasis string
+
+const RecordedCosts CostBasis = "RECORDED_COSTS"
 
 type ExecutionFee struct {
 	Rate   *Decimal
@@ -46,16 +53,22 @@ type ExecutionRequest struct {
 }
 
 type Trade struct {
-	ID                 uuid.UUID
-	AccountID          uuid.UUID
-	SetupVersionID     uuid.UUID
-	Symbol             string
-	Direction          TradeDirection
-	SettlementCurrency string
-	Executions         []Execution
-	RemainingQuantity  Decimal
-	AverageEntryPrice  Decimal
-	CreatedAt          time.Time
+	ID                      uuid.UUID
+	AccountID               uuid.UUID
+	SetupVersionID          uuid.UUID
+	Symbol                  string
+	Direction               TradeDirection
+	SettlementCurrency      string
+	Executions              []Execution
+	RemainingQuantity       Decimal
+	AverageEntryPrice       Decimal
+	RealizedPriceProfitLoss Decimal
+	TotalExecutionFees      Decimal
+	RecordedFunding         Decimal
+	NetProfitLoss           Decimal
+	CompletedAt             *time.Time
+	CostBasis               CostBasis
+	CreatedAt               time.Time
 }
 
 type RecordTradeRequest struct {
@@ -119,7 +132,7 @@ func (s *Service) RecordTrade(ctx context.Context, req RecordTradeRequest) (Trad
 		}
 		entry := req.FirstEntry
 		fee := entry.Quantity.Mul(entry.Price).Mul(*exchange.EntryFeeRate).DivRound(MustDecimal("100"), 18)
-		trade = Trade{ID: uuid.New(), AccountID: req.AccountID, SetupVersionID: req.SetupVersionID, Symbol: req.Symbol, Direction: req.Direction, SettlementCurrency: req.SettlementCurrency, CreatedAt: time.Now().UTC(), RemainingQuantity: entry.Quantity, AverageEntryPrice: entry.Price, Executions: []Execution{{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: ExecutionFee{Rate: exchange.EntryFeeRate, Amount: fee}}}}
+		trade = Trade{ID: uuid.New(), AccountID: req.AccountID, SetupVersionID: req.SetupVersionID, Symbol: req.Symbol, Direction: req.Direction, SettlementCurrency: req.SettlementCurrency, CreatedAt: time.Now().UTC(), TotalExecutionFees: fee, NetProfitLoss: fee.Neg(), CostBasis: RecordedCosts, RemainingQuantity: entry.Quantity, AverageEntryPrice: entry.Price, Executions: []Execution{{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: ExecutionFee{Rate: exchange.EntryFeeRate, Amount: fee}}}}
 		trades, err := loadTrades(state)
 		if err != nil {
 			return err

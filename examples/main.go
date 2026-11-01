@@ -25,6 +25,9 @@ func main() {
 		FirstEntry: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("0.1"), Price: mtl.MustDecimal("60000"), ExecutedAt: time.Now(), Margin: &margin, Leverage: &leverage},
 	})
 	must(err)
+	closed, err := service.CloseTrade(ctx, mtl.CloseTradeRequest{TradeID: trade.ID, Exit: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("0.1"), Price: mtl.MustDecimal("62000"), ExecutedAt: time.Now()}})
+	must(err)
+	fmt.Println("Completed:", closed.CompletedAt, "Net result:", closed.NetProfitLoss, closed.SettlementCurrency, "Basis:", closed.CostBasis)
 	saved, err := service.GetTrade(ctx, trade.ID)
 	must(err)
 	fmt.Println("Trade:", saved.ID, "Quantity:", saved.RemainingQuantity, "Entry price:", saved.AverageEntryPrice)
