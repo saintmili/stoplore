@@ -56,6 +56,8 @@ type ExecutionRequest struct {
 }
 
 type Trade struct {
+	RiskCorrections     []RiskCorrection
+	OriginalPlannedRisk *Decimal
 	// PendingEssentials identifies migration facts awaiting explicit confirmation.
 	PendingEssentials       []string
 	FundingCorrections      []FundingCorrection
@@ -86,13 +88,14 @@ type Trade struct {
 }
 
 type RecordTradeRequest struct {
-	OriginalPlan       *TradePlan
-	AccountID          uuid.UUID
-	SetupVersionID     uuid.UUID
-	Symbol             string
-	Direction          TradeDirection
-	SettlementCurrency string
-	FirstEntry         ExecutionRequest
+	OriginalPlannedRisk *Decimal
+	OriginalPlan        *TradePlan
+	AccountID           uuid.UUID
+	SetupVersionID      uuid.UUID
+	Symbol              string
+	Direction           TradeDirection
+	SettlementCurrency  string
+	FirstEntry          ExecutionRequest
 }
 
 func loadTrades(state *journalState) (map[string]Trade, error) {
@@ -150,7 +153,7 @@ func (s *Service) RecordTrade(ctx context.Context, req RecordTradeRequest) (Trad
 		if err != nil {
 			return err
 		}
-		trade = Trade{OriginalPlan: req.OriginalPlan, ID: uuid.New(), AccountID: req.AccountID, SetupVersionID: req.SetupVersionID, Symbol: req.Symbol, Direction: req.Direction, SettlementCurrency: req.SettlementCurrency, CreatedAt: time.Now().UTC(), TotalExecutionFees: fee.Amount, NetProfitLoss: fee.Amount.Neg(), CostBasis: RecordedCosts, RemainingQuantity: entry.Quantity, AverageEntryPrice: entry.Price, Executions: []Execution{{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: fee}}}
+		trade = Trade{OriginalPlannedRisk: req.OriginalPlannedRisk, OriginalPlan: req.OriginalPlan, ID: uuid.New(), AccountID: req.AccountID, SetupVersionID: req.SetupVersionID, Symbol: req.Symbol, Direction: req.Direction, SettlementCurrency: req.SettlementCurrency, CreatedAt: time.Now().UTC(), TotalExecutionFees: fee.Amount, NetProfitLoss: fee.Amount.Neg(), CostBasis: RecordedCosts, RemainingQuantity: entry.Quantity, AverageEntryPrice: entry.Price, Executions: []Execution{{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: fee}}}
 		trades, err := loadTrades(state)
 		if err != nil {
 			return err
