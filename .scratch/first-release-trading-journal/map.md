@@ -25,3 +25,9 @@ merged into the integration branch after its dependencies are resolved.
   resolved: named setups retain ordered rule versions, each with its own UUID.
   Public setup methods preserve earlier rules across CSV and PostgreSQL reopen;
   trades use setup-version identity for historical context.
+
+- [01: Configure exchanges, accounts, and fee defaults](issues/01-configure-exchanges-accounts-and-fee-defaults.md)
+  resolved: exact decimal entry/exit percentages, account UUIDs, meaningful
+  validation, CSV/PostgreSQL reopen behavior and shared public API harness.
+  New versioned storage preserves legacy source records. Decimal division is
+  explicitly rounded to 18 fractional places, half away from zero.
