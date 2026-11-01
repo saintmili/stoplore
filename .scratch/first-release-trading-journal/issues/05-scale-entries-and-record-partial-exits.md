@@ -4,7 +4,7 @@
 
 **Blocked by:** 04: Fully close a trade and calculate its net result.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 **Spec coverage:** User stories 7, 8, 9, 12, 45, 59, 60, 61.
 

@@ -13,6 +13,19 @@ type CloseTradeRequest struct {
 }
 
 func (s *Service) CloseTrade(ctx context.Context, req CloseTradeRequest) (Trade, error) {
+	return s.recordExit(ctx, req, true)
+}
+
+type RecordExitRequest struct {
+	TradeID uuid.UUID
+	Exit    ExecutionRequest
+}
+
+func (s *Service) RecordExit(ctx context.Context, req RecordExitRequest) (Trade, error) {
+	return s.recordExit(ctx, CloseTradeRequest{TradeID: req.TradeID, Exit: req.Exit}, false)
+}
+
+func (s *Service) recordExit(ctx context.Context, req CloseTradeRequest, complete bool) (Trade, error) {
 	if err := validateExecution(req.Exit); err != nil {
 		return Trade{}, err
 	}
@@ -30,8 +43,11 @@ func (s *Service) CloseTrade(ctx context.Context, req CloseTradeRequest) (Trade,
 		if trade.CompletedAt != nil || trade.RemainingQuantity.IsZero() {
 			return fmt.Errorf("%w: trade is already completed", ErrInvalidRequest)
 		}
-		if !req.Exit.Quantity.Equal(trade.RemainingQuantity) {
+		if complete && !req.Exit.Quantity.Equal(trade.RemainingQuantity) {
 			return fmt.Errorf("%w: complete exit quantity must equal remaining quantity", ErrInvalidRequest)
+		}
+		if req.Exit.Quantity.GreaterThan(trade.RemainingQuantity) {
+			return fmt.Errorf("%w: exit quantity exceeds remaining quantity", ErrInvalidRequest)
 		}
 		for _, execution := range trade.Executions {
 			if req.Exit.ExecutedAt.Before(execution.ExecutedAt) {
@@ -60,8 +76,10 @@ func (s *Service) CloseTrade(ctx context.Context, req CloseTradeRequest) (Trade,
 		trade.TotalExecutionFees = trade.TotalExecutionFees.Add(fee)
 		trade.NetProfitLoss = trade.RealizedPriceProfitLoss.Sub(trade.TotalExecutionFees).Add(trade.RecordedFunding)
 		trade.CostBasis = RecordedCosts
-		trade.RemainingQuantity = Decimal{}
-		trade.CompletedAt = &exit.ExecutedAt
+		trade.RemainingQuantity = trade.RemainingQuantity.Sub(exit.Quantity)
+		if trade.RemainingQuantity.IsZero() {
+			trade.CompletedAt = &exit.ExecutedAt
+		}
 		trades[trade.ID.String()] = trade
 		return state.put("trades", trades)
 	})

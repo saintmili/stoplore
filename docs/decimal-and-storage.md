@@ -77,3 +77,20 @@ is zero; `CostBasis` is `RecordedCosts`, which does not assert that no unrecorde
 payments occurred. `CompletedAt` is the final exit instant and remaining quantity
 is zero. Before closure, the first entry's fee is already included in the trade's
 recorded costs and net result.
+
+`Service.RecordEntry` adds a filled entry to an ongoing trade. Its weighted
+average is `(remaining quantity * average entry + added quantity * entry price)
+/ (remaining quantity + added quantity)`, rounded to 18 fractional places under
+the division rule above. Subsequent additions use this recorded average. Entries
+average against only remaining exposure, rather than quantities already exited.
+
+`Service.RecordExit` records either a partial or a complete exit. An exit cannot
+exceed remaining quantity. Partial exits retain the average entry price and
+realize directional price profit against that average for the exited quantity.
+Each entry or exit snapshots the current applicable exchange fee; all recorded
+execution fees contribute to net result immediately, including entry fees for
+remaining exposure. No unrealized market valuation is included. Executions must
+be recorded in nondecreasing timestamp order; equal instants retain recording
+order. A complete exit sets `CompletedAt`; completed trades reject additional
+entries and exits. The last average entry price remains available after closure.
+`CloseTrade` continues to require an explicitly supplied complete exit quantity.
