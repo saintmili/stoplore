@@ -43,16 +43,16 @@ func (s *Service) RecordEntry(ctx context.Context, req RecordEntryRequest) (Trad
 		if !ok {
 			return fmt.Errorf("%w: exchange %s", ErrNotFound, account.ExchangeID)
 		}
-		if exchange.EntryFeeRate == nil {
-			return fmt.Errorf("%w: entry fee rate is unknown for exchange %s", ErrInvalidRequest, exchange.ID)
-		}
 		entry := req.Entry
-		fee := entry.Quantity.Mul(entry.Price).Mul(*exchange.EntryFeeRate).DivRound(MustDecimal("100"), 18)
+		fee, err := executionFee(entry, exchange.EntryFeeRate)
+		if err != nil {
+			return err
+		}
 		remaining := trade.RemainingQuantity.Add(entry.Quantity)
 		trade.AverageEntryPrice = trade.AverageEntryPrice.Mul(trade.RemainingQuantity).Add(entry.Price.Mul(entry.Quantity)).DivRound(remaining, 18)
 		trade.RemainingQuantity = remaining
-		trade.Executions = append(trade.Executions, Execution{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: ExecutionFee{Rate: exchange.EntryFeeRate, Amount: fee}})
-		trade.TotalExecutionFees = trade.TotalExecutionFees.Add(fee)
+		trade.Executions = append(trade.Executions, Execution{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: fee})
+		trade.TotalExecutionFees = trade.TotalExecutionFees.Add(fee.Amount)
 		trade.NetProfitLoss = trade.RealizedPriceProfitLoss.Sub(trade.TotalExecutionFees).Add(trade.RecordedFunding)
 		trades[trade.ID.String()] = trade
 		return state.put("trades", trades)

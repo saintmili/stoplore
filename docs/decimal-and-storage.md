@@ -53,10 +53,11 @@ present. Optional margin must be nonnegative and optional leverage positive;
 neither determines quantity. Execution instants retain nanosecond precision.
 
 The first entry snapshots its exchange's entry percentage in `Execution.Fee.Rate`
-and its calculated charge in `Execution.Fee.Amount`. Its default charge is
+and its calculated charge in `Execution.Fee.DefaultAmount`.
+`Execution.Fee.Amount` is the effective charge used in results. Its default charge is
 `quantity * price * rate / 100`, rounded to 18 fractional places using the division
 contract above. A configured zero rate produces a known zero fee. An absent rate
-rejects the request; changing exchange settings subsequently leaves the saved
+rejects the request unless an actual fee is supplied; changing exchange settings subsequently leaves the saved
 execution's rate and amount intact. Inputs and averages for a single entry retain
 the entered decimal value without rounding. `ListTrades` orders by journal
 creation time, with UUID as a deterministic tie breaker.
@@ -66,7 +67,7 @@ price, and timestamp. Quantity must equal the remaining position and the timesta
 must not precede earlier executions. An already completed trade rejects further
 closure. The exit snapshots the exchange's current exit percentage and calculates
 its fee from its own quantity and price, including a configured known zero.
-Missing exit defaults reject closure without changing the trade.
+Missing exit defaults reject closure without changing the trade unless an actual fee is supplied.
 
 Trades expose `RealizedPriceProfitLoss`, `TotalExecutionFees`, `RecordedFunding`,
 and `NetProfitLoss` in their settlement currency. Directional price profit is
@@ -94,3 +95,18 @@ be recorded in nondecreasing timestamp order; equal instants retain recording
 order. A complete exit sets `CompletedAt`; completed trades reject additional
 entries and exits. The last average entry price remains available after closure.
 `CloseTrade` continues to require an explicitly supplied complete exit quantity.
+
+`ExecutionRequest.ActualFee` supplies an actual settlement-currency charge, zero,
+or negative rebate. It replaces the default rather than adding to it; the saved
+fee exposes it as `ActualAmount`, while retaining the default rate and calculated
+`DefaultAmount`. If no default was configured, those fields stay nil even when
+an actual fee supplies the required cost. Actual fees retain entered precision.
+Each execution selects its own fee independently.
+
+`Service.RecordFundingPayment` records a signed settlement-currency `Amount` and
+required `PaidAt` timestamp for an existing trade, including a completed trade
+when a historical payment is entered later. Positive means received; negative
+means paid. `Trade.FundingPayments` retains the payments with their IDs and exact
+timestamps, while `RecordedFunding` is their signed total. Funding is optional:
+no payments means zero recorded funding and requires no confirmation. Net results
+always expose `RecordedCosts`, because omitted payments may have occurred.

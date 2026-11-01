@@ -53,3 +53,15 @@ merged into the integration branch after its dependencies are resolved.
   resolved: contextual tags and optional followed/deviated/unassessed reviews
   retain previous tags, assessments, notes, and UTC correction timestamps.
   Shared public API tests verify CSV/PostgreSQL reopening and invalid updates.
+
+- [06: Record actual fee overrides and optional funding](issues/06-record-actual-fee-overrides-and-optional-funding.md)
+  resolved: per-execution actual fees replace defaults while preserving unknown or
+  known default snapshots; signed timestamped funding adjusts net results and
+  remains optional. Shared CSV/PostgreSQL behaviors verify exact amounts,
+  recorded-cost basis, meaningful errors, and reopening.
+
+- [05: Scale entries and record partial exits](issues/05-scale-entries-and-record-partial-exits.md)
+  resolved: multiple entries average against remaining exposure; partial exits
+  realize directional profit and final exits complete the trading idea. Shared
+  CSV/PostgreSQL API behaviors retain fills and fees across reopening, validate
+  sequences, and verify the documented decimal rounding policy.

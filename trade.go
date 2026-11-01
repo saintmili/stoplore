@@ -29,8 +29,10 @@ type CostBasis string
 const RecordedCosts CostBasis = "RECORDED_COSTS"
 
 type ExecutionFee struct {
-	Rate   *Decimal
-	Amount Decimal
+	DefaultAmount *Decimal
+	ActualAmount  *Decimal
+	Rate          *Decimal
+	Amount        Decimal
 }
 
 type Execution struct {
@@ -45,6 +47,7 @@ type Execution struct {
 }
 
 type ExecutionRequest struct {
+	ActualFee  *Decimal
 	Quantity   Decimal
 	Price      Decimal
 	ExecutedAt time.Time
@@ -53,6 +56,7 @@ type ExecutionRequest struct {
 }
 
 type Trade struct {
+	FundingPayments         []FundingPayment
 	ReviewHistory           []ReviewCorrection
 	Tags                    []string
 	Review                  TradeReview
@@ -137,12 +141,12 @@ func (s *Service) RecordTrade(ctx context.Context, req RecordTradeRequest) (Trad
 		if !ok {
 			return fmt.Errorf("%w: exchange %s", ErrNotFound, account.ExchangeID)
 		}
-		if exchange.EntryFeeRate == nil {
-			return fmt.Errorf("%w: entry fee rate is unknown for exchange %s", ErrInvalidRequest, exchange.ID)
-		}
 		entry := req.FirstEntry
-		fee := entry.Quantity.Mul(entry.Price).Mul(*exchange.EntryFeeRate).DivRound(MustDecimal("100"), 18)
-		trade = Trade{OriginalPlan: req.OriginalPlan, ID: uuid.New(), AccountID: req.AccountID, SetupVersionID: req.SetupVersionID, Symbol: req.Symbol, Direction: req.Direction, SettlementCurrency: req.SettlementCurrency, CreatedAt: time.Now().UTC(), TotalExecutionFees: fee, NetProfitLoss: fee.Neg(), CostBasis: RecordedCosts, RemainingQuantity: entry.Quantity, AverageEntryPrice: entry.Price, Executions: []Execution{{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: ExecutionFee{Rate: exchange.EntryFeeRate, Amount: fee}}}}
+		fee, err := executionFee(entry, exchange.EntryFeeRate)
+		if err != nil {
+			return err
+		}
+		trade = Trade{OriginalPlan: req.OriginalPlan, ID: uuid.New(), AccountID: req.AccountID, SetupVersionID: req.SetupVersionID, Symbol: req.Symbol, Direction: req.Direction, SettlementCurrency: req.SettlementCurrency, CreatedAt: time.Now().UTC(), TotalExecutionFees: fee.Amount, NetProfitLoss: fee.Amount.Neg(), CostBasis: RecordedCosts, RemainingQuantity: entry.Quantity, AverageEntryPrice: entry.Price, Executions: []Execution{{ID: uuid.New(), Kind: Entry, Quantity: entry.Quantity, Price: entry.Price, ExecutedAt: entry.ExecutedAt, Margin: entry.Margin, Leverage: entry.Leverage, Fee: fee}}}
 		trades, err := loadTrades(state)
 		if err != nil {
 			return err

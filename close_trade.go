@@ -62,18 +62,18 @@ func (s *Service) recordExit(ctx context.Context, req CloseTradeRequest, complet
 		if !ok {
 			return fmt.Errorf("%w: exchange %s", ErrNotFound, account.ExchangeID)
 		}
-		if exchange.ExitFeeRate == nil {
-			return fmt.Errorf("%w: exit fee rate is unknown for exchange %s", ErrInvalidRequest, exchange.ID)
-		}
 		exit := req.Exit
-		fee := exit.Quantity.Mul(exit.Price).Mul(*exchange.ExitFeeRate).DivRound(MustDecimal("100"), 18)
+		fee, err := executionFee(exit, exchange.ExitFeeRate)
+		if err != nil {
+			return err
+		}
 		pnl := exit.Price.Sub(trade.AverageEntryPrice).Mul(exit.Quantity)
 		if trade.Direction == Short {
 			pnl = pnl.Neg()
 		}
-		trade.Executions = append(trade.Executions, Execution{ID: uuid.New(), Kind: Exit, Quantity: exit.Quantity, Price: exit.Price, ExecutedAt: exit.ExecutedAt, Margin: exit.Margin, Leverage: exit.Leverage, Fee: ExecutionFee{Rate: exchange.ExitFeeRate, Amount: fee}})
+		trade.Executions = append(trade.Executions, Execution{ID: uuid.New(), Kind: Exit, Quantity: exit.Quantity, Price: exit.Price, ExecutedAt: exit.ExecutedAt, Margin: exit.Margin, Leverage: exit.Leverage, Fee: fee})
 		trade.RealizedPriceProfitLoss = trade.RealizedPriceProfitLoss.Add(pnl)
-		trade.TotalExecutionFees = trade.TotalExecutionFees.Add(fee)
+		trade.TotalExecutionFees = trade.TotalExecutionFees.Add(fee.Amount)
 		trade.NetProfitLoss = trade.RealizedPriceProfitLoss.Sub(trade.TotalExecutionFees).Add(trade.RecordedFunding)
 		trade.CostBasis = RecordedCosts
 		trade.RemainingQuantity = trade.RemainingQuantity.Sub(exit.Quantity)

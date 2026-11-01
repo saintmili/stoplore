@@ -195,6 +195,8 @@ func TestScalingRejectsInvalidSequencesWithoutChangingTrade(t *testing.T) {
 		addition := fill
 		addition.Quantity = mtl.MustDecimal("2")
 		addition.Price = mtl.MustDecimal("2")
+		rebate := mtl.MustDecimal("-0.123")
+		addition.ActualFee = &rebate
 		rounded, err = s.RecordEntry(ctx, mtl.RecordEntryRequest{TradeID: rounded.ID, Entry: addition})
 		if err != nil {
 			t.Fatal(err)
@@ -202,13 +204,25 @@ func TestScalingRejectsInvalidSequencesWithoutChangingTrade(t *testing.T) {
 		if rounded.AverageEntryPrice.String() != "1.666666666666666667" {
 			t.Fatalf("rounded weighted average: %s", rounded.AverageEntryPrice)
 		}
+		partial := addition
+		partial.Quantity = mtl.MustDecimal("1")
+		charge := mtl.MustDecimal("0.023")
+		partial.ActualFee = &charge
+		rounded, err = s.RecordExit(ctx, mtl.RecordExitRequest{TradeID: rounded.ID, Exit: partial})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rounded.TotalExecutionFees.String() != "-0.1" || rounded.NetProfitLoss.String() != "0.433333333333333333" || rounded.Executions[1].Fee.ActualAmount.String() != "-0.123" || rounded.Executions[2].Fee.ActualAmount.String() != "0.023" {
+			t.Fatalf("scaling actual fees: %+v", rounded)
+		}
 		complete := addition
-		complete.Quantity = mtl.MustDecimal("3")
+		complete.ActualFee = nil
+		complete.Quantity = mtl.MustDecimal("2")
 		rounded, err = s.CloseTrade(ctx, mtl.CloseTradeRequest{TradeID: rounded.ID, Exit: complete})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if rounded.NetProfitLoss.String() != "0.999999999999999999" {
+		if rounded.NetProfitLoss.String() != "1.099999999999999999" {
 			t.Fatalf("profit against recorded average: %s", rounded.NetProfitLoss)
 		}
 
