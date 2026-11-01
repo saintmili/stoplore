@@ -59,7 +59,7 @@ def validate(version, commit, retry):
     return {
         "commit": commit, "branch": branch, "version": version,
         "exists": str(exists).lower(), "previous": previous,
-        "module": "github.com/saintmili/mtl" + (
+        "module": "github.com/saintmili/stoplore" + (
             f"/v{selected[0]}" if selected[0] >= 2 else ""
         ),
         "latest": str(not latest or selected >= latest).lower(),

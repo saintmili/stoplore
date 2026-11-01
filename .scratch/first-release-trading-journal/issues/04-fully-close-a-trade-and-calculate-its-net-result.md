@@ -30,5 +30,5 @@ zero fees, missing exit rates, invalid fills, and repeated closure rejection.
 The worked 6,000-to-6,200 long returns 200 price profit, 4.88 fees, and 195.12 net.
 Updated the usage example and decimal/storage documentation.
 
-Validation: `MTL_TEST_POSTGRES_DSN=… go test ./...` passed for both backends;
+Validation: `STOPLORE_TEST_POSTGRES_DSN=… go test ./...` passed for both backends;
 `git diff --check` passed. Implemented from dependency integration commit 470ca90.

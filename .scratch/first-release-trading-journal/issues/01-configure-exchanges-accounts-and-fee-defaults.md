@@ -33,4 +33,4 @@ Established the shared public Go behavior harness, including isolated PostgreSQL
 schemas, reopening each backend, exact fee values, account identity and validation
 workflows. Recorded initial red compilation errors for missing public
 capabilities, then green `go test ./...` against CSV and PostgreSQL using
-`MTL_TEST_POSTGRES_DSN`. Merged the latest integration branch including ticket02.
+`STOPLORE_TEST_POSTGRES_DSN`. Merged the latest integration branch including ticket02.

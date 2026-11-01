@@ -1,7 +1,7 @@
-# MTL Trading Journal
+# StopLore Trading Journal
 
-MTL records a trader's activity and decisions so they can review their execution
-and compare the results of their trading setups.
+StopLore records a trader's activity and decisions so they can review their
+execution and compare the results of their trading setups.
 
 ## Language
 

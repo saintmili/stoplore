@@ -1,4 +1,4 @@
-package mtl
+package stoplore
 
 import (
 	"context"
@@ -128,7 +128,7 @@ func (c *csvDocuments) transact(ctx context.Context, change func(*journalState) 
 	if err != nil {
 		return nil, err
 	}
-	tmp, err := os.CreateTemp(c.dir, ".mtl-journal-*.csv")
+	tmp, err := os.CreateTemp(c.dir, ".stoplore-journal-*.csv")
 	if err != nil {
 		return nil, err
 	}

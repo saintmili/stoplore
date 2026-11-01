@@ -1,4 +1,4 @@
-package mtl_test
+package stoplore_test
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	mtl "github.com/saintmili/mtl"
+	stoplore "github.com/saintmili/stoplore"
 )
 
 func TestCompletedRiskComparisonPreservesOriginalBudget(t *testing.T) {
@@ -17,30 +17,30 @@ func TestCompletedRiskComparisonPreservesOriginalBudget(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		rate := mtl.MustDecimal("0")
-		ex, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Risk", EntryFeeRate: &rate, ExitFeeRate: &rate})
+		rate := stoplore.MustDecimal("0")
+		ex, err := s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Risk", EntryFeeRate: &rate, ExitFeeRate: &rate})
 		if err != nil {
 			t.Fatal(err)
 		}
-		account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: ex.ID, Name: "Main"})
+		account, err := s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: ex.ID, Name: "Main"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		setup, err := s.CreateSetup(ctx, mtl.CreateSetupRequest{Name: "Risk setup", Rules: "Rules"})
+		setup, err := s.CreateSetup(ctx, stoplore.CreateSetupRequest{Name: "Risk setup", Rules: "Rules"})
 		if err != nil {
 			t.Fatal(err)
 		}
 		at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-		risk := mtl.MustDecimal("50")
-		tr, err := s.RecordTrade(ctx, mtl.RecordTradeRequest{OriginalPlannedRisk: &risk, AccountID: account.ID, SetupVersionID: setup.Versions[0].ID, Symbol: "BTCUSDT", Direction: mtl.Long, SettlementCurrency: "USDT", FirstEntry: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("100"), ExecutedAt: at}})
+		risk := stoplore.MustDecimal("50")
+		tr, err := s.RecordTrade(ctx, stoplore.RecordTradeRequest{OriginalPlannedRisk: &risk, AccountID: account.ID, SetupVersionID: setup.Versions[0].ID, Symbol: "BTCUSDT", Direction: stoplore.Long, SettlementCurrency: "USDT", FirstEntry: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("100"), ExecutedAt: at}})
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = s.ReviseTradePlan(ctx, mtl.ReviseTradePlanRequest{TradeID: tr.ID, RevisedAt: at.Add(time.Hour), Plan: mtl.TradePlan{Stop: decimalPtr("80")}})
+		_, err = s.ReviseTradePlan(ctx, stoplore.ReviseTradePlanRequest{TradeID: tr.ID, RevisedAt: at.Add(time.Hour), Plan: stoplore.TradePlan{Stop: decimalPtr("80")}})
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = s.CloseTrade(ctx, mtl.CloseTradeRequest{TradeID: tr.ID, Exit: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("210"), ActualFee: decimalPtr("10"), ExecutedAt: at.Add(2 * time.Hour)}})
+		_, err = s.CloseTrade(ctx, stoplore.CloseTradeRequest{TradeID: tr.ID, Exit: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("210"), ActualFee: decimalPtr("10"), ExecutedAt: at.Add(2 * time.Hour)}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -53,7 +53,7 @@ func TestCompletedRiskComparisonPreservesOriginalBudget(t *testing.T) {
 			t.Fatal(err)
 		}
 		assertOptionalDecimal(t, got.OriginalPlannedRisk, "50")
-		report, err := s.ReportPerformance(ctx, mtl.ReportFilter{})
+		report, err := s.ReportPerformance(ctx, stoplore.ReportFilter{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -66,7 +66,7 @@ func TestCompletedRiskComparisonPreservesOriginalBudget(t *testing.T) {
 		}
 		assertOptionalDecimal(t, result.OriginalPlannedRisk, "50")
 		assertOptionalDecimal(t, result.RMultiple, "2")
-		correction := mtl.CorrectOriginalPlannedRiskRequest{TradeID: tr.ID, OriginalPlannedRisk: decimalPtr("25"), CorrectedAt: at.Add(3 * time.Hour), Reason: "Original budget mistyped"}
+		correction := stoplore.CorrectOriginalPlannedRiskRequest{TradeID: tr.ID, OriginalPlannedRisk: decimalPtr("25"), CorrectedAt: at.Add(3 * time.Hour), Reason: "Original budget mistyped"}
 		corrected, err := s.CorrectOriginalPlannedRisk(ctx, correction)
 		if err != nil {
 			t.Fatal(err)
@@ -85,23 +85,23 @@ func TestCompletedRiskComparisonPreservesOriginalBudget(t *testing.T) {
 		}
 		assertOptionalDecimal(t, corrected.RiskCorrections[0].Before, "50")
 		assertOptionalDecimal(t, corrected.RiskCorrections[0].After, "25")
-		report, err = s.ReportPerformance(ctx, mtl.ReportFilter{})
+		report, err = s.ReportPerformance(ctx, stoplore.ReportFilter{})
 		if err != nil {
 			t.Fatal(err)
 		}
 		assertOptionalDecimal(t, report.Completed[0].RMultiple, "4")
 		correction.TradeID = uuid.New()
-		if _, err = s.CorrectOriginalPlannedRisk(ctx, correction); !errors.Is(err, mtl.ErrNotFound) {
+		if _, err = s.CorrectOriginalPlannedRisk(ctx, correction); !errors.Is(err, stoplore.ErrNotFound) {
 			t.Fatalf("missing trade: %v", err)
 		}
 		correction.TradeID = tr.ID
 		correction.Reason = " "
-		if _, err = s.CorrectOriginalPlannedRisk(ctx, correction); !errors.Is(err, mtl.ErrInvalidRequest) {
+		if _, err = s.CorrectOriginalPlannedRisk(ctx, correction); !errors.Is(err, stoplore.ErrInvalidRequest) {
 			t.Fatalf("missing reason: %v", err)
 		}
 		correction.Reason = "Correct unknown budget"
 		correction.CorrectedAt = time.Time{}
-		if _, err = s.CorrectOriginalPlannedRisk(ctx, correction); !errors.Is(err, mtl.ErrInvalidRequest) {
+		if _, err = s.CorrectOriginalPlannedRisk(ctx, correction); !errors.Is(err, stoplore.ErrInvalidRequest) {
 			t.Fatalf("missing timestamp: %v", err)
 		}
 
@@ -115,26 +115,26 @@ func TestMissingAndNonpositiveRiskRetainsMonetaryReports(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		zero := mtl.MustDecimal("0")
-		ex, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Unavailable risk", EntryFeeRate: &zero, ExitFeeRate: &zero})
+		zero := stoplore.MustDecimal("0")
+		ex, err := s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Unavailable risk", EntryFeeRate: &zero, ExitFeeRate: &zero})
 		if err != nil {
 			t.Fatal(err)
 		}
-		account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: ex.ID, Name: "Main"})
+		account, err := s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: ex.ID, Name: "Main"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		setup, err := s.CreateSetup(ctx, mtl.CreateSetupRequest{Name: "Risk setup", Rules: "Rules"})
+		setup, err := s.CreateSetup(ctx, stoplore.CreateSetupRequest{Name: "Risk setup", Rules: "Rules"})
 		if err != nil {
 			t.Fatal(err)
 		}
 		at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-		for _, risk := range []*mtl.Decimal{nil, decimalPtr("0"), decimalPtr("-50")} {
-			tr, err := s.RecordTrade(ctx, mtl.RecordTradeRequest{OriginalPlannedRisk: risk, AccountID: account.ID, SetupVersionID: setup.Versions[0].ID, Symbol: "BTCUSDT", Direction: mtl.Long, SettlementCurrency: "USDT", FirstEntry: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("100"), ExecutedAt: at}})
+		for _, risk := range []*stoplore.Decimal{nil, decimalPtr("0"), decimalPtr("-50")} {
+			tr, err := s.RecordTrade(ctx, stoplore.RecordTradeRequest{OriginalPlannedRisk: risk, AccountID: account.ID, SetupVersionID: setup.Versions[0].ID, Symbol: "BTCUSDT", Direction: stoplore.Long, SettlementCurrency: "USDT", FirstEntry: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("100"), ExecutedAt: at}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = s.CloseTrade(ctx, mtl.CloseTradeRequest{TradeID: tr.ID, Exit: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("200"), ExecutedAt: at.Add(time.Hour)}})
+			_, err = s.CloseTrade(ctx, stoplore.CloseTradeRequest{TradeID: tr.ID, Exit: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("200"), ExecutedAt: at.Add(time.Hour)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -143,7 +143,7 @@ func TestMissingAndNonpositiveRiskRetainsMonetaryReports(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		report, err := s.ReportPerformance(ctx, mtl.ReportFilter{})
+		report, err := s.ReportPerformance(ctx, stoplore.ReportFilter{})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## Project Overview
 
-MTL is a Go library for recording and analyzing trading journal entries.
+StopLore is a Go library for recording and analyzing trading journal entries.
 
 
 ## Coding Guidelines

@@ -1,4 +1,4 @@
-package mtl_test
+package stoplore_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	mtl "github.com/saintmili/mtl"
+	stoplore "github.com/saintmili/stoplore"
 )
 
 // This schema is the old application's source format, not the journal's target storage.
@@ -29,16 +29,16 @@ const legacyTradeSchema = `CREATE TABLE trades (
 
 func postgresMigrationFixture(t *testing.T, key []byte, fixtureSQL ...string) (*pgxpool.Pool, func() string) {
 	t.Helper()
-	dsn := os.Getenv("MTL_TEST_POSTGRES_DSN")
+	dsn := os.Getenv("STOPLORE_TEST_POSTGRES_DSN")
 	if dsn == "" {
-		t.Skip("set MTL_TEST_POSTGRES_DSN for isolated PostgreSQL source fixtures")
+		t.Skip("set STOPLORE_TEST_POSTGRES_DSN for isolated PostgreSQL source fixtures")
 	}
 	ctx := context.Background()
 	admin, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema := "mtl_source_" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	schema := "stoplore_source_" + strings.ReplaceAll(uuid.NewString(), "-", "")
 	if _, err = admin.Exec(ctx, "CREATE SCHEMA "+schema); err != nil {
 		admin.Close()
 		t.Fatal(err)
@@ -59,7 +59,7 @@ func postgresMigrationFixture(t *testing.T, key []byte, fixtureSQL ...string) (*
 	}
 	notes := syntheticImportRow()[23]
 	if len(key) > 0 {
-		notes, err = mtl.Encrypt(notes, key)
+		notes, err = stoplore.Encrypt(notes, key)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -110,7 +110,7 @@ func TestPostgresMigrationPreservesSourceThroughReviewConfirmationAndReopen(t *t
 				if err != nil {
 					t.Fatal(err)
 				}
-				req := mtl.PostgresImportRequest{Source: source, SourceID: "synthetic-postgres", SourceKey: key}
+				req := stoplore.PostgresImportRequest{Source: source, SourceID: "synthetic-postgres", SourceKey: key}
 				trades, err := s.ImportPostgres(ctx, req)
 				if err != nil {
 					t.Fatal(err)
@@ -141,22 +141,22 @@ func TestPostgresMigrationPreservesSourceThroughReviewConfirmationAndReopen(t *t
 				if err != nil || version.Rules != "" {
 					t.Fatalf("unknown rules: %+v %v", version, err)
 				}
-				report, err := s.ReportPerformance(ctx, mtl.ReportFilter{})
+				report, err := s.ReportPerformance(ctx, stoplore.ReportFilter{})
 				if err != nil || len(report.Groups) != 1 || report.Groups[0].ExcludedCount != 1 || report.Groups[0].EligibleCount != 0 {
 					t.Fatalf("pending: %+v %v", report, err)
 				}
-				exchange, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Confirmed venue"})
+				exchange, err := s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Confirmed venue"})
 				if err != nil {
 					t.Fatal(err)
 				}
-				account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: exchange.ID, Name: "Historical"})
+				account, err := s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: exchange.ID, Name: "Historical"})
 				if err != nil {
 					t.Fatal(err)
 				}
 				at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-				confirmed, err := s.ConfirmMigration(ctx, mtl.ConfirmMigrationRequest{TradeID: tr.ID, AccountID: account.ID, SettlementCurrency: "USDC", Executions: []mtl.MigrationExecution{
-					{Kind: mtl.Entry, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("100"), ExecutedAt: at, ActualFee: decimalPtr("0.1")}},
-					{Kind: mtl.Exit, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("120"), ExecutedAt: at.Add(time.Hour), ActualFee: decimalPtr("0.2")}},
+				confirmed, err := s.ConfirmMigration(ctx, stoplore.ConfirmMigrationRequest{TradeID: tr.ID, AccountID: account.ID, SettlementCurrency: "USDC", Executions: []stoplore.MigrationExecution{
+					{Kind: stoplore.Entry, ExecutionRequest: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("100"), ExecutedAt: at, ActualFee: decimalPtr("0.1")}},
+					{Kind: stoplore.Exit, ExecutionRequest: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("120"), ExecutedAt: at.Add(time.Hour), ActualFee: decimalPtr("0.2")}},
 				}})
 				if err != nil {
 					t.Fatal(err)
@@ -172,7 +172,7 @@ func TestPostgresMigrationPreservesSourceThroughReviewConfirmationAndReopen(t *t
 				if err != nil || got.NetProfitLoss.String() != "19.7" || got.Migration.Fields["STOPLOSSPRICE"] != "90" || got.Migration.Fields["NOTES"] != syntheticImportRow()[23] {
 					t.Fatalf("reopen: %+v %v", got, err)
 				}
-				report, err = s.ReportPerformance(ctx, mtl.ReportFilter{})
+				report, err = s.ReportPerformance(ctx, stoplore.ReportFilter{})
 				if err != nil || len(report.Groups) != 1 || report.Groups[0].EligibleCount != 1 || report.Groups[0].ExcludedCount != 0 || report.Groups[0].SettlementCurrency != "USDC" || report.Groups[0].TotalNetProfit.String() != "19.7" {
 					t.Fatalf("confirmed report: %+v %v", report, err)
 				}
@@ -195,16 +195,16 @@ func TestPostgresMigrationRejectsUnreadableSourcesWithoutPartialJournalWrites(t 
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = s.ImportPostgres(ctx, mtl.PostgresImportRequest{SourceID: "missing-pool"}); !errors.Is(err, mtl.ErrInvalidRequest) {
+		if _, err = s.ImportPostgres(ctx, stoplore.PostgresImportRequest{SourceID: "missing-pool"}); !errors.Is(err, stoplore.ErrInvalidRequest) {
 			t.Fatalf("missing pool: %v", err)
 		}
 		key := []byte("12345678901234567890123456789012")
 		source, snapshot := postgresMigrationFixture(t, key)
 		original := snapshot()
-		if _, err = s.ImportPostgres(ctx, mtl.PostgresImportRequest{Source: source, SourceID: "wrong-key", SourceKey: []byte("abcdefghijklmnopabcdefghijklmnop")}); err == nil {
+		if _, err = s.ImportPostgres(ctx, stoplore.PostgresImportRequest{Source: source, SourceID: "wrong-key", SourceKey: []byte("abcdefghijklmnopabcdefghijklmnop")}); err == nil {
 			t.Fatal("wrong source key accepted")
 		}
-		if _, err = s.ImportPostgres(ctx, mtl.PostgresImportRequest{Source: source}); !errors.Is(err, mtl.ErrInvalidRequest) {
+		if _, err = s.ImportPostgres(ctx, stoplore.PostgresImportRequest{Source: source}); !errors.Is(err, stoplore.ErrInvalidRequest) {
 			t.Fatalf("missing source identity: %v", err)
 		}
 		if snapshot() != original {
@@ -214,14 +214,14 @@ func TestPostgresMigrationRejectsUnreadableSourcesWithoutPartialJournalWrites(t 
  SELECT (jsonb_populate_record(NULL::trades, to_jsonb(trades) ||
  '{"id":"e85322f7-2c4d-4999-bbf0-25aa510bf552","notes":"invalid ciphertext"}'::jsonb)).* FROM trades`)
 		originalBad := badSnapshot()
-		if _, err = s.ImportPostgres(ctx, mtl.PostgresImportRequest{Source: bad, SourceID: "bad-second-row", SourceKey: key}); err == nil {
+		if _, err = s.ImportPostgres(ctx, stoplore.PostgresImportRequest{Source: bad, SourceID: "bad-second-row", SourceKey: key}); err == nil {
 			t.Fatal("partially decrypted batch accepted")
 		}
 		if badSnapshot() != originalBad {
 			t.Fatal("batch failure changed source")
 		}
 		empty, _ := postgresMigrationFixture(t, nil, "DROP TABLE trades")
-		if _, err = s.ImportPostgres(ctx, mtl.PostgresImportRequest{Source: empty, SourceID: "missing-table"}); err == nil {
+		if _, err = s.ImportPostgres(ctx, stoplore.PostgresImportRequest{Source: empty, SourceID: "missing-table"}); err == nil {
 			t.Fatal("missing source table accepted")
 		}
 		var count int

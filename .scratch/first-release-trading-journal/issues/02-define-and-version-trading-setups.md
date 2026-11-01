@@ -29,4 +29,4 @@ or missing records.
 
 Validation: initial missing-API test failed before implementation; the listing
 slice failed before `ListSetups` was added. Final `go test ./...` passed with
-`MTL_TEST_POSTGRES_DSN` configured, covering both backends.
+`STOPLORE_TEST_POSTGRES_DSN` configured, covering both backends.

@@ -1,6 +1,6 @@
 # 12: Migrate and confirm existing CSV records
 
-**What to build:** Import current and legacy MTL CSV records into either backend, preserve their source and original information, and review and confirm missing or inferred essentials before reporting.
+**What to build:** Import current and legacy StopLore CSV records into either backend, preserve their source and original information, and review and confirm missing or inferred essentials before reporting.
 
 **Blocked by:** 07: Preserve original plans and dated revisions; 10: Report completed-trade performance by setup.
 
@@ -8,7 +8,7 @@
 
 **Spec coverage:** User stories 53, 60, 61, 63, 64, 65, 66, 67.
 
-- [x] A public migration operation accepts supported current and legacy MTL CSV records and can target either configured backend.
+- [x] A public migration operation accepts supported current and legacy StopLore CSV records and can target either configured backend.
 - [x] Preserve source records and all available original information; show imported records in the journal immediately.
 - [x] Identify missing or inferred essentials such as account, currency, quantity, and fees and keep affected records out of performance statistics pending confirmation.
 - [x] A public review-and-confirmation workflow makes completed records eligible when their essential information is confirmed and fees are complete.

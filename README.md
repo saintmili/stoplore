@@ -1,4 +1,4 @@
-# MTL - My Trade Logs
+# StopLore — The stories behind your stops.
 
 A Go library for recording and analyzing a personal trading journal.
 
@@ -19,18 +19,18 @@ recorded costs, risk comparisons, and performance reports on CSV and PostgreSQL.
 ## Exchange accounts and fees
 
 ```go
-service := mtl.NewWithCSV("./journal")
+service := stoplore.NewWithCSV("./journal")
 if err := service.Init(); err != nil {
     return err
 }
-entry, exit := mtl.MustDecimal("0.04"), mtl.MustDecimal("0.06")
-exchange, err := service.Exchange.Add(ctx, mtl.AddExchangeRequest{
+entry, exit := stoplore.MustDecimal("0.04"), stoplore.MustDecimal("0.06")
+exchange, err := service.Exchange.Add(ctx, stoplore.AddExchangeRequest{
     Name: "My exchange", EntryFeeRate: &entry, ExitFeeRate: &exit,
 })
 if err != nil {
     return err
 }
-account, err := service.CreateAccount(ctx, mtl.CreateAccountRequest{
+account, err := service.CreateAccount(ctx, stoplore.CreateAccountRequest{
     ExchangeID: exchange.ID, Name: "Main",
 })
 ```
@@ -45,7 +45,7 @@ Initialize the destination service with either backend, then pass a separate
 `pgxpool.Pool` connected to the legacy database and schema:
 
 ```go
-imported, err := service.ImportPostgres(ctx, mtl.PostgresImportRequest{
+imported, err := service.ImportPostgres(ctx, stoplore.PostgresImportRequest{
     Source: legacyPool, SourceID: "my-old-journal", SourceKey: legacyNotesKey,
 })
 ```

@@ -85,8 +85,8 @@ class ReleaseValidationTests(unittest.TestCase):
     def test_stable_major_versions_use_correct_module_paths(self):
         self.git("tag", "v0.1.0")
         for version, branch, module in (
-            ("v1.0.0", "release/v1.0", "github.com/saintmili/mtl"),
-            ("v2.0.0", "release/v2.0", "github.com/saintmili/mtl/v2"),
+            ("v1.0.0", "release/v1.0", "github.com/saintmili/stoplore"),
+            ("v2.0.0", "release/v2.0", "github.com/saintmili/stoplore/v2"),
         ):
             self.git("update-ref", f"refs/remotes/origin/{branch}", self.sha)
             result = self.validate(version)

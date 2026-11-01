@@ -22,6 +22,7 @@ coverage.html
 mtl_journal.csv
 .mtl-journal.lock
 .mtl-*.csv
+.stoplore-*.csv
 
 # Local environment and credentials
 .env

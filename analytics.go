@@ -1,4 +1,4 @@
-package mtl
+package stoplore
 
 type Analytics struct {
 	TotalPositions int

@@ -1,4 +1,4 @@
-package mtl
+package stoplore
 
 import (
 	"context"
@@ -186,7 +186,7 @@ func (s *CSVStorage) ListPositions(ctx context.Context) ([]*Position, error) {
 func (s *CSVStorage) writePositions(ctx context.Context) error {
 	fileName := s.dirPath + "/positions.csv"
 	dir := filepath.Dir(fileName)
-	tmp, err := os.CreateTemp(dir, ".mtl-*.csv")
+	tmp, err := os.CreateTemp(dir, ".stoplore-*.csv")
 	if err != nil {
 		return err
 	}

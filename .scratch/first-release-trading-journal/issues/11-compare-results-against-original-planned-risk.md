@@ -32,4 +32,4 @@ corrected baseline.
 Shared public API tests pass against CSV and isolated PostgreSQL, including
 reopening, plan revision preservation, 100 USDT net / 50 USDT risk = 2R,
 corrections and unavailable risk with retained monetary eligibility. Full suite:
-`MTL_TEST_POSTGRES_DSN=... GOCACHE=/tmp/mtl-ticket11-cache go test ./... -count=1`.
+`STOPLORE_TEST_POSTGRES_DSN=... GOCACHE=/tmp/stoplore-ticket11-cache go test ./... -count=1`.

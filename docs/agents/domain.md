@@ -1,6 +1,6 @@
 # Domain documentation
 
-MTL uses a single context: root `GLOSSARY.md` and `docs/adr/`.
+StopLore uses a single context: root `GLOSSARY.md` and `docs/adr/`.
 
 Before exploring domain code:
 

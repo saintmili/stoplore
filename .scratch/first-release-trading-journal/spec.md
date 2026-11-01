@@ -1,4 +1,4 @@
-# MTL first release: personal trade journaling and setup performance
+# StopLore first release: personal trade journaling and setup performance
 
 Status: resolved
 
@@ -39,7 +39,7 @@ decisions.
 ## User Stories
 
 1. As a Go application developer, I want journaling and reporting available through a library, so that my application can provide its own UI and service connections.
-2. As a trader, I want to journal USDT/USDC-settled perpetual futures, so that MTL covers my initial trading activity.
+2. As a trader, I want to journal USDT/USDC-settled perpetual futures, so that StopLore covers my initial trading activity.
 3. As a trader, I want trades to retain execution timestamps across hours or months, so that long holding periods remain reviewable.
 4. As a trader, I want every trade associated with its exchange and account, so that activity in my different accounts remains distinguishable.
 5. As a trader, I want one trade to represent one idea in one instrument and direction, so that I can review the whole idea together.
@@ -272,7 +272,7 @@ behavior suite against CSV and PostgreSQL.
 
 - A UI, terminal application, HTTP server, or hosted product.
 - Automatic exchange synchronization, exchange-file imports beyond migration of
-  existing MTL records, and external service integrations.
+  existing StopLore records, and external service integrations.
 - Automated trading, automatic strategy discovery or suggestions, and backtesting.
 - Live market data and unrealized position valuation.
 - Account-equity analysis, portfolio returns, and equity drawdown reporting.

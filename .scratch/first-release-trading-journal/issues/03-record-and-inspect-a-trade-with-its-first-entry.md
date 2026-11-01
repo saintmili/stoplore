@@ -29,5 +29,5 @@ The shared public API suite verifies both directions, exact decimal and timestam
 round trips, stable setup/fee history after edits, deterministic list/get/reopen
 behavior, invalid requests, unknown/zero fees, and half-away-from-zero rounding
 to 18 fractional places. CSV and PostgreSQL pass via `go test ./...` with
-`MTL_TEST_POSTGRES_DSN` configured. Updated `examples/main.go` and
+`STOPLORE_TEST_POSTGRES_DSN` configured. Updated `examples/main.go` and
 `docs/decimal-and-storage.md`. Legacy sources remain untouched.

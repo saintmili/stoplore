@@ -1,6 +1,6 @@
 # 13: Extend migration to existing PostgreSQL records
 
-**What to build:** Use the established migration review and confirmation workflow for existing MTL PostgreSQL records, targeting either backend while preserving the source database records.
+**What to build:** Use the established migration review and confirmation workflow for existing StopLore PostgreSQL records, targeting either backend while preserving the source database records.
 
 **Blocked by:** 12: Migrate and confirm existing CSV records.
 
@@ -36,5 +36,5 @@ partial imports, absent pools/identities, and missing source tables without
 creating source storage.
 
 Validation: red compilation before the public adapter existed; then
-`MTL_TEST_POSTGRES_DSN=<isolated local fixture> GOCACHE=/tmp/mtl-ticket13-cache go test ./...`
+`STOPLORE_TEST_POSTGRES_DSN=<isolated local fixture> GOCACHE=/tmp/stoplore-ticket13-cache go test ./...`
 passed for the full suite, including both target backends.

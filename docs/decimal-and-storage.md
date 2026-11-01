@@ -1,8 +1,8 @@
 # Financial values and journal storage
 
-New journal APIs use `mtl.Decimal`, an alias of `shopspring/decimal.Decimal`.
-Construct values from strings with `mtl.ParseDecimal` (returns an error) or
-`mtl.MustDecimal` (panics on invalid input). Plain signed base-ten integer or
+New journal APIs use `stoplore.Decimal`, an alias of `shopspring/decimal.Decimal`.
+Construct values from strings with `stoplore.ParseDecimal` (returns an error) or
+`stoplore.MustDecimal` (panics on invalid input). Plain signed base-ten integer or
 fractional digits are accepted, with no exponent, whitespace, NaN, or infinity.
 Financial inputs must not pass through binary floats. Decimal zero values are
 valid; optional fields use `*Decimal`, with `nil` meaning unknown and a pointer
@@ -32,13 +32,17 @@ previous document intact. PostgreSQL stores the equivalent JSONB document in
 storage rather than trusting a cached snapshot, allowing reopened service
 instances to see each other's updates.
 
+The `mtl_*` storage names, `MTL_JOURNAL_V1` CSV marker, and
+`.mtl-journal.lock` filename are retained for compatibility with existing
+journals created before the StopLore rename.
+
 Existing `positions.csv`, `exchanges.csv`, and PostgreSQL `trades` records remain
 in their legacy schema. New configuration writes do not alter those records.
 Migration is a separate, explicit operation; no maker/taker rate is inferred as
 an entry/exit default.
 
 The shared public API behavior suite runs CSV by default. Set
-`MTL_TEST_POSTGRES_DSN` to a PostgreSQL connection string to run the same suite
+`STOPLORE_TEST_POSTGRES_DSN` to a PostgreSQL connection string to run the same suite
 against PostgreSQL. Each test creates and drops its own random schema, so the
 configured database user needs schema creation privileges. Tests reopen the
 library and verify records through public operations.

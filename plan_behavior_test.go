@@ -1,32 +1,32 @@
-package mtl_test
+package stoplore_test
 
 import (
 	"context"
 	"errors"
 	"github.com/google/uuid"
-	mtl "github.com/saintmili/mtl"
+	stoplore "github.com/saintmili/stoplore"
 	"reflect"
 	"testing"
 	"time"
 )
 
-func planTradeRequest(t *testing.T, s *mtl.Service) mtl.RecordTradeRequest {
+func planTradeRequest(t *testing.T, s *stoplore.Service) stoplore.RecordTradeRequest {
 	t.Helper()
 	ctx := context.Background()
-	zero := mtl.MustDecimal("0")
-	ex, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Plans", EntryFeeRate: &zero})
+	zero := stoplore.MustDecimal("0")
+	ex, err := s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Plans", EntryFeeRate: &zero})
 	if err != nil {
 		t.Fatal(err)
 	}
-	account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: ex.ID, Name: "Main"})
+	account, err := s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: ex.ID, Name: "Main"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	setup, err := s.CreateSetup(ctx, mtl.CreateSetupRequest{Name: "Breakout", Rules: "Break resistance"})
+	setup, err := s.CreateSetup(ctx, stoplore.CreateSetupRequest{Name: "Breakout", Rules: "Break resistance"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return mtl.RecordTradeRequest{AccountID: account.ID, SetupVersionID: setup.Versions[0].ID, Symbol: "BTCUSDT", Direction: mtl.Long, SettlementCurrency: "USDT", FirstEntry: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("100"), ExecutedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}}
+	return stoplore.RecordTradeRequest{AccountID: account.ID, SetupVersionID: setup.Versions[0].ID, Symbol: "BTCUSDT", Direction: stoplore.Long, SettlementCurrency: "USDT", FirstEntry: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("100"), ExecutedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}}
 }
 
 func TestOriginalTradePlanMayBeMissingOrPartial(t *testing.T) {
@@ -41,8 +41,8 @@ func TestOriginalTradePlanMayBeMissingOrPartial(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		target := mtl.MustDecimal("125.000000000000001")
-		req.OriginalPlan = &mtl.TradePlan{EntryReason: "Breakout", Target: &target, Notes: "Wait for volume"}
+		target := stoplore.MustDecimal("125.000000000000001")
+		req.OriginalPlan = &stoplore.TradePlan{EntryReason: "Breakout", Target: &target, Notes: "Wait for volume"}
 		planned, err := s.RecordTrade(ctx, req)
 		if err != nil {
 			t.Fatal(err)
@@ -76,20 +76,20 @@ func TestDatedPlanRevisionsRetainOriginalAndEarlierDecisions(t *testing.T) {
 			t.Fatal(err)
 		}
 		req := planTradeRequest(t, s)
-		stop := mtl.MustDecimal("90")
-		target := mtl.MustDecimal("120")
-		req.OriginalPlan = &mtl.TradePlan{EntryReason: "Breakout", Stop: &stop, Target: &target}
+		stop := stoplore.MustDecimal("90")
+		target := stoplore.MustDecimal("120")
+		req.OriginalPlan = &stoplore.TradePlan{EntryReason: "Breakout", Stop: &stop, Target: &target}
 		trade, err := s.RecordTrade(ctx, req)
 		if err != nil {
 			t.Fatal(err)
 		}
 		at := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
-		moved := mtl.MustDecimal("100")
-		first, err := s.ReviseTradePlan(ctx, mtl.ReviseTradePlanRequest{TradeID: trade.ID, RevisedAt: at, Plan: mtl.TradePlan{Stop: &moved, Notes: "Protect capital"}})
+		moved := stoplore.MustDecimal("100")
+		first, err := s.ReviseTradePlan(ctx, stoplore.ReviseTradePlanRequest{TradeID: trade.ID, RevisedAt: at, Plan: stoplore.TradePlan{Stop: &moved, Notes: "Protect capital"}})
 		if err != nil {
 			t.Fatal(err)
 		}
-		second, err := s.ReviseTradePlan(ctx, mtl.ReviseTradePlanRequest{TradeID: trade.ID, RevisedAt: at.Add(time.Hour), Plan: mtl.TradePlan{Notes: "Let it run"}})
+		second, err := s.ReviseTradePlan(ctx, stoplore.ReviseTradePlanRequest{TradeID: trade.ID, RevisedAt: at.Add(time.Hour), Plan: stoplore.TradePlan{Notes: "Let it run"}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -118,27 +118,27 @@ func TestPlanningCorrectionsRetainPreviousValuesWithoutNewDecisions(t *testing.T
 			t.Fatal(err)
 		}
 		req := planTradeRequest(t, s)
-		req.OriginalPlan = &mtl.TradePlan{EntryReason: "Brekout"}
+		req.OriginalPlan = &stoplore.TradePlan{EntryReason: "Brekout"}
 		trade, err := s.RecordTrade(ctx, req)
 		if err != nil {
 			t.Fatal(err)
 		}
 		at := time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC)
-		revision, err := s.ReviseTradePlan(ctx, mtl.ReviseTradePlanRequest{TradeID: trade.ID, RevisedAt: at, Plan: mtl.TradePlan{Notes: "Tigthten stop"}})
+		revision, err := s.ReviseTradePlan(ctx, stoplore.ReviseTradePlanRequest{TradeID: trade.ID, RevisedAt: at, Plan: stoplore.TradePlan{Notes: "Tigthten stop"}})
 		if err != nil {
 			t.Fatal(err)
 		}
-		corrected := mtl.TradePlan{EntryReason: "Breakout"}
-		_, err = s.CorrectTradePlan(ctx, mtl.CorrectTradePlanRequest{TradeID: trade.ID, CorrectedAt: at.Add(time.Hour), Reason: "Typo", Plan: &corrected})
+		corrected := stoplore.TradePlan{EntryReason: "Breakout"}
+		_, err = s.CorrectTradePlan(ctx, stoplore.CorrectTradePlanRequest{TradeID: trade.ID, CorrectedAt: at.Add(time.Hour), Reason: "Typo", Plan: &corrected})
 		if err != nil {
 			t.Fatal(err)
 		}
-		fixedRevision := mtl.TradePlan{Notes: "Tighten stop"}
-		_, err = s.CorrectTradePlan(ctx, mtl.CorrectTradePlanRequest{TradeID: trade.ID, RevisionID: revision.ID, CorrectedAt: at.Add(2 * time.Hour), Reason: "Typo", Plan: &fixedRevision})
+		fixedRevision := stoplore.TradePlan{Notes: "Tighten stop"}
+		_, err = s.CorrectTradePlan(ctx, stoplore.CorrectTradePlanRequest{TradeID: trade.ID, RevisionID: revision.ID, CorrectedAt: at.Add(2 * time.Hour), Reason: "Typo", Plan: &fixedRevision})
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = s.CorrectTradePlan(ctx, mtl.CorrectTradePlanRequest{TradeID: trade.ID, CorrectedAt: at.Add(3 * time.Hour), Reason: "Reason belongs to another trade", Plan: nil})
+		_, err = s.CorrectTradePlan(ctx, stoplore.CorrectTradePlanRequest{TradeID: trade.ID, CorrectedAt: at.Add(3 * time.Hour), Reason: "Reason belongs to another trade", Plan: nil})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -168,9 +168,9 @@ func TestPlanningRequestsRejectInvalidPricesAndUnknownRecords(t *testing.T) {
 			t.Fatal(err)
 		}
 		req := planTradeRequest(t, s)
-		invalid := mtl.MustDecimal("-1")
-		req.OriginalPlan = &mtl.TradePlan{Stop: &invalid}
-		if _, err = s.RecordTrade(ctx, req); !errors.Is(err, mtl.ErrInvalidRequest) {
+		invalid := stoplore.MustDecimal("-1")
+		req.OriginalPlan = &stoplore.TradePlan{Stop: &invalid}
+		if _, err = s.RecordTrade(ctx, req); !errors.Is(err, stoplore.ErrInvalidRequest) {
 			t.Fatalf("negative stop accepted: %v", err)
 		}
 		req.OriginalPlan = nil
@@ -179,29 +179,29 @@ func TestPlanningRequestsRejectInvalidPricesAndUnknownRecords(t *testing.T) {
 			t.Fatal(err)
 		}
 		at := time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC)
-		for _, bad := range []mtl.ReviseTradePlanRequest{{TradeID: trade.ID}, {TradeID: trade.ID, RevisedAt: at, Plan: mtl.TradePlan{Target: &invalid}}} {
-			if _, err = s.ReviseTradePlan(ctx, bad); !errors.Is(err, mtl.ErrInvalidRequest) {
+		for _, bad := range []stoplore.ReviseTradePlanRequest{{TradeID: trade.ID}, {TradeID: trade.ID, RevisedAt: at, Plan: stoplore.TradePlan{Target: &invalid}}} {
+			if _, err = s.ReviseTradePlan(ctx, bad); !errors.Is(err, stoplore.ErrInvalidRequest) {
 				t.Fatalf("invalid revision: %v", err)
 			}
 		}
-		if _, err = s.ReviseTradePlan(ctx, mtl.ReviseTradePlanRequest{TradeID: uuid.New(), RevisedAt: at}); !errors.Is(err, mtl.ErrNotFound) {
+		if _, err = s.ReviseTradePlan(ctx, stoplore.ReviseTradePlanRequest{TradeID: uuid.New(), RevisedAt: at}); !errors.Is(err, stoplore.ErrNotFound) {
 			t.Fatalf("unknown trade: %v", err)
 		}
-		for _, bad := range []mtl.CorrectTradePlanRequest{
+		for _, bad := range []stoplore.CorrectTradePlanRequest{
 			{TradeID: trade.ID, Reason: "Missing date"},
 			{TradeID: trade.ID, CorrectedAt: at, Reason: " "},
-			{TradeID: trade.ID, CorrectedAt: at, Reason: "Bad price", Plan: &mtl.TradePlan{Stop: &invalid}},
+			{TradeID: trade.ID, CorrectedAt: at, Reason: "Bad price", Plan: &stoplore.TradePlan{Stop: &invalid}},
 			{TradeID: trade.ID, RevisionID: uuid.New(), CorrectedAt: at, Reason: "Missing plan"},
 		} {
-			if _, err = s.CorrectTradePlan(ctx, bad); !errors.Is(err, mtl.ErrInvalidRequest) {
+			if _, err = s.CorrectTradePlan(ctx, bad); !errors.Is(err, stoplore.ErrInvalidRequest) {
 				t.Fatalf("invalid correction: %v", err)
 			}
 		}
-		for _, bad := range []mtl.CorrectTradePlanRequest{
+		for _, bad := range []stoplore.CorrectTradePlanRequest{
 			{TradeID: uuid.New(), CorrectedAt: at, Reason: "Unknown trade"},
-			{TradeID: trade.ID, RevisionID: uuid.New(), CorrectedAt: at, Reason: "Unknown revision", Plan: &mtl.TradePlan{}},
+			{TradeID: trade.ID, RevisionID: uuid.New(), CorrectedAt: at, Reason: "Unknown revision", Plan: &stoplore.TradePlan{}},
 		} {
-			if _, err = s.CorrectTradePlan(ctx, bad); !errors.Is(err, mtl.ErrNotFound) {
+			if _, err = s.CorrectTradePlan(ctx, bad); !errors.Is(err, stoplore.ErrNotFound) {
 				t.Fatalf("unknown correction target: %v", err)
 			}
 		}

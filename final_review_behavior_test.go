@@ -1,9 +1,9 @@
-package mtl_test
+package stoplore_test
 
 import (
 	"context"
 	"encoding/csv"
-	mtl "github.com/saintmili/mtl"
+	stoplore "github.com/saintmili/stoplore"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,7 +23,7 @@ func TestJournalRejectsMissingPersistedCollections(t *testing.T) {
 			}
 			w.Flush()
 			f.Close()
-			s := mtl.NewWithCSV(dir)
+			s := stoplore.NewWithCSV(dir)
 			if err = s.Init(); err != nil {
 				return
 			}

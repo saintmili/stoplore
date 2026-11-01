@@ -23,17 +23,17 @@ jobs:
         image: postgres:17
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: mtl_test
-          POSTGRES_DB: mtl_test
+          POSTGRES_PASSWORD: stoplore_test
+          POSTGRES_DB: stoplore_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d mtl_test"
+          --health-cmd "pg_isready -U postgres -d stoplore_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      MTL_TEST_POSTGRES_DSN: postgres://postgres:mtl_test@localhost:5432/mtl_test?sslmode=disable
+      STOPLORE_TEST_POSTGRES_DSN: postgres://postgres:stoplore_test@localhost:5432/stoplore_test?sslmode=disable
       GOTOOLCHAIN: local
     steps:
       - uses: actions/checkout@v7
@@ -52,7 +52,7 @@ jobs:
           if [[ -n "$EXPECTED_MODULE" ]]; then
             test "$module" = "$EXPECTED_MODULE"
           else
-            [[ "$module" =~ ^github.com/saintmili/mtl(/v([2-9]|[1-9][0-9]+))?$ ]]
+            [[ "$module" =~ ^github.com/saintmili/stoplore(/v([2-9]|[1-9][0-9]+))?$ ]]
           fi
           go mod tidy
           git diff --exit-code -- go.mod go.sum

@@ -1,4 +1,4 @@
-# MTL first-release design
+# StopLore first-release design
 
 Status: accepted design, confirmed on 2026-11-01. Implementation is pending.
 
@@ -11,8 +11,8 @@ See the [domain glossary](../GLOSSARY.md) for terminology and the
 
 ## Purpose and boundary
 
-MTL is a personal trading journal implemented as a Go library. It should help the
-trader record activity, examine which setups made or lost money after recorded
+StopLore is a personal trading journal implemented as a Go library. It should help
+the trader record activity, examine which setups made or lost money after recorded
 costs, review whether they followed their rules, and use that evidence to develop
 their trading strategy.
 
@@ -28,7 +28,7 @@ The first deliverable is the complete recording-and-review workflow described
 here. Backtesting, automated strategy suggestions, live position valuation, and
 account-equity analysis are later work. A UI and automatic exchange imports or
 connections are outside this library's first-release deliverable; migration of
-existing MTL records is included.
+existing StopLore records is included.
 
 ## Trades and executions
 

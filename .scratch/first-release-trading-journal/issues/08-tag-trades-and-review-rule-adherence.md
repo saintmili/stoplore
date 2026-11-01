@@ -30,5 +30,5 @@ unchanged. No separate strategy hierarchy was introduced.
 
 Verified through the approved public Go API seam with three red/green slices:
 context and optional assessments, correction history across reopening, and
-validation without mutation. `MTL_TEST_POSTGRES_DSN=... go test ./...` passes
+validation without mutation. `STOPLORE_TEST_POSTGRES_DSN=... go test ./...` passes
 against CSV and isolated PostgreSQL schemas, including reopen and list reads.

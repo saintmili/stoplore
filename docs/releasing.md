@@ -24,7 +24,7 @@ implementation.
   the supported release branch and `master`.
 - New features, including compatible additions, require a minor release.
   Patch releases contain fixes only.
-- Publish from the public repository `github.com/saintmili/mtl`, matching the
+- Publish from the public repository `github.com/saintmili/stoplore`, matching the
   module path, using GitHub Actions. The manually triggered workflow must exist
   on the repository's default branch.
 - The initial pipeline supports stable versions only. Prereleases are deferred.
@@ -45,7 +45,7 @@ implementation.
 
 The public GitHub repository must use `master` as its default branch and contain
 these workflows on that branch. This checkout has no configured remote; configure
-`origin` for `github.com/saintmili/mtl` before pushing. Repository rules must allow
+`origin` for `github.com/saintmili/stoplore` before pushing. Repository rules must allow
 the release workflow's `GITHUB_TOKEN` to create version tags and GitHub Releases.
 The workflow grants write permission only to its publishing job.
 
@@ -82,7 +82,7 @@ In GitHub Actions, choose **Release**, then **Run workflow** on `master`. Supply
 The equivalent GitHub CLI command is:
 
 ```sh
-gh workflow run release.yml --repo saintmili/mtl --ref master \
+gh workflow run release.yml --repo saintmili/stoplore --ref master \
   -f version=v0.1.0 -f commit=FULL_COMMIT_SHA -f retry=false
 ```
 
@@ -92,7 +92,7 @@ workflow runs at a time. It does not execute the selected release's code in the
 job holding publishing credentials. During v0, the pipeline rejects new patches
 for superseded minor lines. Existing tags from any line can resume publication
 without becoming the latest release. Versions v2 and later require the matching
-major-version module path, such as `github.com/saintmili/mtl/v2`, in the selected
+major-version module path, such as `github.com/saintmili/stoplore/v2`, in the selected
 commit's `go.mod`.
 
 If publication fails after the tag was pushed, run the workflow again with the
@@ -107,7 +107,7 @@ start a new manual run with `retry=true` instead.
 After publishing, consumers can select the exact module version:
 
 ```sh
-go get github.com/saintmili/mtl@v0.1.0
+go get github.com/saintmili/stoplore@v0.1.0
 ```
 
 Local checks for the pipeline's Git validation rules are:

@@ -1,27 +1,29 @@
-package mtl_test
+package stoplore_test
 
 import (
 	"context"
 	"errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	mtl "github.com/saintmili/mtl"
+	stoplore "github.com/saintmili/stoplore"
 	"os"
 	"testing"
 )
 
-type backend struct{ Open func() (*mtl.Service, error) }
+type backend struct {
+	Open func() (*stoplore.Service, error)
+}
 
 func forEachBackend(t *testing.T, behavior func(*testing.T, backend)) {
 	t.Helper()
 	t.Run("CSV", func(t *testing.T) {
 		dir := t.TempDir()
-		behavior(t, backend{Open: func() (*mtl.Service, error) { s := mtl.NewWithCSV(dir); return s, s.Init() }})
+		behavior(t, backend{Open: func() (*stoplore.Service, error) { s := stoplore.NewWithCSV(dir); return s, s.Init() }})
 	})
 	t.Run("PostgreSQL", func(t *testing.T) {
-		dsn := os.Getenv("MTL_TEST_POSTGRES_DSN")
+		dsn := os.Getenv("STOPLORE_TEST_POSTGRES_DSN")
 		if dsn == "" {
-			t.Skip("set MTL_TEST_POSTGRES_DSN to run isolated PostgreSQL behaviors")
+			t.Skip("set STOPLORE_TEST_POSTGRES_DSN to run isolated PostgreSQL behaviors")
 		}
 		ctx := context.Background()
 		pool, err := pgxpool.New(ctx, dsn)
@@ -29,7 +31,7 @@ func forEachBackend(t *testing.T, behavior func(*testing.T, backend)) {
 			t.Fatal(err)
 		}
 		defer pool.Close()
-		schema := "mtl_test_" + uuid.New().String()[:8]
+		schema := "stoplore_test_" + uuid.New().String()[:8]
 		if _, err = pool.Exec(ctx, "CREATE SCHEMA "+schema); err != nil {
 			t.Fatal(err)
 		}
@@ -44,7 +46,7 @@ func forEachBackend(t *testing.T, behavior func(*testing.T, backend)) {
 			t.Fatal(err)
 		}
 		defer isolated.Close()
-		behavior(t, backend{Open: func() (*mtl.Service, error) { s := mtl.NewWithPostgres(isolated, nil); return s, s.Init() }})
+		behavior(t, backend{Open: func() (*stoplore.Service, error) { s := stoplore.NewWithPostgres(isolated, nil); return s, s.Init() }})
 	})
 }
 func TestExchangeAccountsAndFeeDefaultsSurviveReopening(t *testing.T) {
@@ -54,13 +56,13 @@ func TestExchangeAccountsAndFeeDefaultsSurviveReopening(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		entry := mtl.MustDecimal("0.040000000000000000123")
-		exit := mtl.MustDecimal("0")
-		exchange, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Example", EntryFeeRate: &entry, ExitFeeRate: &exit})
+		entry := stoplore.MustDecimal("0.040000000000000000123")
+		exit := stoplore.MustDecimal("0")
+		exchange, err := s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Example", EntryFeeRate: &entry, ExitFeeRate: &exit})
 		if err != nil {
 			t.Fatal(err)
 		}
-		account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: exchange.ID, Name: "Main"})
+		account, err := s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: exchange.ID, Name: "Main"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -79,14 +81,14 @@ func TestExchangeAccountsAndFeeDefaultsSurviveReopening(t *testing.T) {
 		if err != nil || saved != account {
 			t.Fatalf("account: %+v %v", saved, err)
 		}
-		unknown, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Unknown rates"})
+		unknown, err := s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Unknown rates"})
 		if err != nil {
 			t.Fatal(err)
 		}
 		if unknown.EntryFeeRate != nil || unknown.ExitFeeRate != nil {
 			t.Fatal("missing fee defaults became zero")
 		}
-		if _, err = s.Exchange.GetByID(ctx, uuid.NewString()); !errors.Is(err, mtl.ErrNotFound) {
+		if _, err = s.Exchange.GetByID(ctx, uuid.NewString()); !errors.Is(err, stoplore.ErrNotFound) {
 			t.Fatalf("missing exchange: %v", err)
 		}
 	})
@@ -99,38 +101,38 @@ func TestConfigurationValidationAndUpdates(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: " "}); !errors.Is(err, mtl.ErrInvalidRequest) {
+		if _, err = s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: " "}); !errors.Is(err, stoplore.ErrInvalidRequest) {
 			t.Fatalf("blank exchange: %v", err)
 		}
-		negative := mtl.MustDecimal("-0.1")
-		if _, err = s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Negative", EntryFeeRate: &negative}); !errors.Is(err, mtl.ErrInvalidRequest) {
+		negative := stoplore.MustDecimal("-0.1")
+		if _, err = s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Negative", EntryFeeRate: &negative}); !errors.Is(err, stoplore.ErrInvalidRequest) {
 			t.Fatalf("negative default: %v", err)
 		}
-		exchange, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Exchange"})
+		exchange, err := s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Exchange"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: " exchange "}); !errors.Is(err, mtl.ErrConflict) {
+		if _, err = s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: " exchange "}); !errors.Is(err, stoplore.ErrConflict) {
 			t.Fatalf("duplicate exchange: %v", err)
 		}
-		if _, err = s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: uuid.New(), Name: "Main"}); !errors.Is(err, mtl.ErrNotFound) {
+		if _, err = s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: uuid.New(), Name: "Main"}); !errors.Is(err, stoplore.ErrNotFound) {
 			t.Fatalf("missing exchange: %v", err)
 		}
-		if _, err = s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: exchange.ID, Name: " "}); !errors.Is(err, mtl.ErrInvalidRequest) {
+		if _, err = s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: exchange.ID, Name: " "}); !errors.Is(err, stoplore.ErrInvalidRequest) {
 			t.Fatalf("blank account: %v", err)
 		}
-		account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: exchange.ID, Name: "Main"})
+		account, err := s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: exchange.ID, Name: "Main"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: exchange.ID, Name: "main"}); !errors.Is(err, mtl.ErrConflict) {
+		if _, err = s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: exchange.ID, Name: "main"}); !errors.Is(err, stoplore.ErrConflict) {
 			t.Fatalf("duplicate account: %v", err)
 		}
-		if _, err = s.GetAccount(ctx, uuid.New()); !errors.Is(err, mtl.ErrNotFound) {
+		if _, err = s.GetAccount(ctx, uuid.New()); !errors.Is(err, stoplore.ErrNotFound) {
 			t.Fatalf("missing account: %v", err)
 		}
-		rate := mtl.MustDecimal("0.065")
-		if _, err = s.Exchange.Edit(ctx, mtl.EditExchangeRequest{ID: exchange.ID, Name: "Renamed", ExitFeeRate: &rate}); err != nil {
+		rate := stoplore.MustDecimal("0.065")
+		if _, err = s.Exchange.Edit(ctx, stoplore.EditExchangeRequest{ID: exchange.ID, Name: "Renamed", ExitFeeRate: &rate}); err != nil {
 			t.Fatal(err)
 		}
 		s, err = b.Open()
@@ -148,7 +150,7 @@ func TestConfigurationValidationAndUpdates(t *testing.T) {
 		if err != nil || len(accounts) != 1 || accounts[0] != account {
 			t.Fatalf("accounts: %+v, %v", accounts, err)
 		}
-		if _, err = s.Exchange.DeleteByID(ctx, exchange.ID.String()); !errors.Is(err, mtl.ErrConflict) {
+		if _, err = s.Exchange.DeleteByID(ctx, exchange.ID.String()); !errors.Is(err, stoplore.ErrConflict) {
 			t.Fatalf("account exchange deleted: %v", err)
 		}
 	})

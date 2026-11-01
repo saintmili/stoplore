@@ -1,4 +1,4 @@
-module github.com/saintmili/mtl
+module github.com/saintmili/stoplore
 
 go 1.25.1
 

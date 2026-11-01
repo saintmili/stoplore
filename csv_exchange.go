@@ -1,4 +1,4 @@
-package mtl
+package stoplore
 
 import (
 	"context"
@@ -156,7 +156,7 @@ func (s *CSVStorage) ListExchanges(ctx context.Context) ([]*Exchange, error) {
 func (s *CSVStorage) writeExchanges(ctx context.Context) error {
 	fileName := s.dirPath + "/exchanges.csv"
 	dir := filepath.Dir(fileName)
-	tmp, err := os.CreateTemp(dir, ".mtl-*.csv")
+	tmp, err := os.CreateTemp(dir, ".stoplore-*.csv")
 	if err != nil {
 		return err
 	}

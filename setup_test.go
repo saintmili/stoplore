@@ -1,4 +1,4 @@
-package mtl_test
+package stoplore_test
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"testing"
 
-	mtl "github.com/saintmili/mtl"
+	stoplore "github.com/saintmili/stoplore"
 )
 
 func TestSetupRulesRemainAvailableAfterRevisionAndReopen(t *testing.T) {
@@ -17,7 +17,7 @@ func TestSetupRulesRemainAvailableAfterRevisionAndReopen(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		setup, err := service.CreateSetup(ctx, mtl.CreateSetupRequest{Name: "Breakout", Rules: "Enter after daily close above resistance"})
+		setup, err := service.CreateSetup(ctx, stoplore.CreateSetupRequest{Name: "Breakout", Rules: "Enter after daily close above resistance"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -25,7 +25,7 @@ func TestSetupRulesRemainAvailableAfterRevisionAndReopen(t *testing.T) {
 			t.Fatalf("unexpected initial setup: %+v", setup)
 		}
 		original := setup.Versions[0]
-		revised, err := service.ReviseSetup(ctx, mtl.ReviseSetupRequest{SetupID: setup.ID, Rules: "Enter after daily close and retest"})
+		revised, err := service.ReviseSetup(ctx, stoplore.ReviseSetupRequest{SetupID: setup.ID, Rules: "Enter after daily close and retest"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -60,11 +60,11 @@ func TestListSetupsKeepsIndependentNamedRules(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		first, err := service.CreateSetup(ctx, mtl.CreateSetupRequest{Name: "Trend", Rules: "Trade with daily trend"})
+		first, err := service.CreateSetup(ctx, stoplore.CreateSetupRequest{Name: "Trend", Rules: "Trade with daily trend"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		second, err := service.CreateSetup(ctx, mtl.CreateSetupRequest{Name: "Breakout", Rules: "Wait for range break"})
+		second, err := service.CreateSetup(ctx, stoplore.CreateSetupRequest{Name: "Breakout", Rules: "Wait for range break"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -85,22 +85,22 @@ func TestSetupRequestsReturnMeaningfulErrors(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, request := range []mtl.CreateSetupRequest{{Name: " ", Rules: "Wait"}, {Name: "Breakout", Rules: " "}} {
-			if _, err := service.CreateSetup(ctx, request); !errors.Is(err, mtl.ErrInvalidRequest) {
+		for _, request := range []stoplore.CreateSetupRequest{{Name: " ", Rules: "Wait"}, {Name: "Breakout", Rules: " "}} {
+			if _, err := service.CreateSetup(ctx, request); !errors.Is(err, stoplore.ErrInvalidRequest) {
 				t.Fatalf("invalid setup: %v", err)
 			}
 		}
 		missing := uuid.New()
-		if _, err := service.GetSetup(ctx, missing); !errors.Is(err, mtl.ErrNotFound) {
+		if _, err := service.GetSetup(ctx, missing); !errors.Is(err, stoplore.ErrNotFound) {
 			t.Fatalf("missing setup: %v", err)
 		}
-		if _, err := service.GetSetupVersion(ctx, missing); !errors.Is(err, mtl.ErrNotFound) {
+		if _, err := service.GetSetupVersion(ctx, missing); !errors.Is(err, stoplore.ErrNotFound) {
 			t.Fatalf("missing setup version: %v", err)
 		}
-		if _, err := service.ReviseSetup(ctx, mtl.ReviseSetupRequest{SetupID: missing, Rules: "Wait"}); !errors.Is(err, mtl.ErrNotFound) {
+		if _, err := service.ReviseSetup(ctx, stoplore.ReviseSetupRequest{SetupID: missing, Rules: "Wait"}); !errors.Is(err, stoplore.ErrNotFound) {
 			t.Fatalf("revise missing setup: %v", err)
 		}
-		if _, err := service.ReviseSetup(ctx, mtl.ReviseSetupRequest{SetupID: missing, Rules: " "}); !errors.Is(err, mtl.ErrInvalidRequest) {
+		if _, err := service.ReviseSetup(ctx, stoplore.ReviseSetupRequest{SetupID: missing, Rules: " "}); !errors.Is(err, stoplore.ErrInvalidRequest) {
 			t.Fatalf("empty revised rules: %v", err)
 		}
 		setups, err := service.ListSetups(ctx)

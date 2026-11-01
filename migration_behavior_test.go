@@ -1,4 +1,4 @@
-package mtl_test
+package stoplore_test
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"github.com/google/uuid"
-	mtl "github.com/saintmili/mtl"
+	stoplore "github.com/saintmili/stoplore"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -40,7 +40,7 @@ func TestCSVImportReviewConfirmationAndReportsSurviveReopen(t *testing.T) {
 			t.Fatal(err)
 		}
 		path, original := importFixture(t, importHeader, syntheticImportRow())
-		imported, err := s.ImportCSV(ctx, mtl.CSVImportRequest{Path: path, SourceID: "synthetic-current"})
+		imported, err := s.ImportCSV(ctx, stoplore.CSVImportRequest{Path: path, SourceID: "synthetic-current"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,20 +67,20 @@ func TestCSVImportReviewConfirmationAndReportsSurviveReopen(t *testing.T) {
 		if err != nil || version.Rules != "" {
 			t.Fatalf("unknown rules: %+v %v", version, err)
 		}
-		report, err := s.ReportPerformance(ctx, mtl.ReportFilter{})
+		report, err := s.ReportPerformance(ctx, stoplore.ReportFilter{})
 		if err != nil || len(report.Groups) != 1 || report.Groups[0].ExcludedCount != 1 || report.Groups[0].EligibleCount != 0 {
 			t.Fatalf("pending report: %+v %v", report, err)
 		}
-		ex, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Confirmed venue"})
+		ex, err := s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Confirmed venue"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: ex.ID, Name: "Historical account"})
+		account, err := s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: ex.ID, Name: "Historical account"})
 		if err != nil {
 			t.Fatal(err)
 		}
 		at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-		confirmed, err := s.ConfirmMigration(ctx, mtl.ConfirmMigrationRequest{TradeID: tr.ID, AccountID: account.ID, SettlementCurrency: "USDT", Executions: []mtl.MigrationExecution{{Kind: mtl.Entry, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("100"), ExecutedAt: at, ActualFee: decimalPtr("0.1")}}, {Kind: mtl.Exit, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("120"), ExecutedAt: at.Add(time.Hour), ActualFee: decimalPtr("0.2")}}}})
+		confirmed, err := s.ConfirmMigration(ctx, stoplore.ConfirmMigrationRequest{TradeID: tr.ID, AccountID: account.ID, SettlementCurrency: "USDT", Executions: []stoplore.MigrationExecution{{Kind: stoplore.Entry, ExecutionRequest: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("100"), ExecutedAt: at, ActualFee: decimalPtr("0.1")}}, {Kind: stoplore.Exit, ExecutionRequest: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("120"), ExecutedAt: at.Add(time.Hour), ActualFee: decimalPtr("0.2")}}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -95,7 +95,7 @@ func TestCSVImportReviewConfirmationAndReportsSurviveReopen(t *testing.T) {
 		if err != nil || got.NetProfitLoss.String() != "19.7" || got.Migration.Fields["STOPLOSSPRICE"] != "90" {
 			t.Fatalf("reopen: %+v %v", got, err)
 		}
-		report, err = s.ReportPerformance(ctx, mtl.ReportFilter{})
+		report, err = s.ReportPerformance(ctx, stoplore.ReportFilter{})
 		if len(report.Completed) != 1 || report.Completed[0].TradeID != tr.ID || report.Completed[0].RMultiple != nil || report.Completed[0].OriginalPlannedRisk != nil {
 			t.Fatalf("confirmed migration without historical risk: %+v", report.Completed)
 		}
@@ -106,7 +106,7 @@ func TestCSVImportReviewConfirmationAndReportsSurviveReopen(t *testing.T) {
 		if err != nil || !bytes.Equal(data, original) {
 			t.Fatalf("source modified: %v", err)
 		}
-		again, err := s.ImportCSV(ctx, mtl.CSVImportRequest{Path: path, SourceID: "synthetic-current"})
+		again, err := s.ImportCSV(ctx, stoplore.CSVImportRequest{Path: path, SourceID: "synthetic-current"})
 		if err != nil || len(again) != 1 || again[0].ID != tr.ID || again[0].Migration.ConfirmedAt == nil {
 			t.Fatalf("retry: %+v %v", again, err)
 		}
@@ -136,28 +136,28 @@ func TestLegacyCSVPreservesPartialNontradeAndUnknownHistory(t *testing.T) {
 			}
 		}
 		path, original := importFixture(t, header, row)
-		trades, err := s.ImportCSV(ctx, mtl.CSVImportRequest{Path: path})
+		trades, err := s.ImportCSV(ctx, stoplore.CSVImportRequest{Path: path})
 		if err != nil {
 			t.Fatal(err)
 		}
 		tr := trades[0]
-		pendingReport, err := s.ReportPerformance(ctx, mtl.ReportFilter{})
+		pendingReport, err := s.ReportPerformance(ctx, stoplore.ReportFilter{})
 		if err != nil || len(pendingReport.Groups) != 0 || len(pendingReport.Ongoing) != 1 {
 			t.Fatalf("historical partial exit is ongoing: %+v %v", pendingReport, err)
 		}
-		if tr.Direction != mtl.Short || len(tr.Executions) != 2 || tr.Executions[1].Quantity.String() != "0.25" || tr.Migration.Format != "csv-legacy" || len(tr.Migration.OriginalFields) != 26 {
+		if tr.Direction != stoplore.Short || len(tr.Executions) != 2 || tr.Executions[1].Quantity.String() != "0.25" || tr.Migration.Format != "csv-legacy" || len(tr.Migration.OriginalFields) != 26 {
 			t.Fatalf("legacy: %+v", tr)
 		}
-		ex, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Legacy confirmation"})
+		ex, err := s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Legacy confirmation"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: ex.ID, Name: "main"})
+		account, err := s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: ex.ID, Name: "main"})
 		if err != nil {
 			t.Fatal(err)
 		}
 		at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-		req := mtl.ConfirmMigrationRequest{TradeID: tr.ID, AccountID: account.ID, SettlementCurrency: "USDC", Executions: []mtl.MigrationExecution{{Kind: mtl.Entry, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("100"), ExecutedAt: at, ActualFee: decimalPtr("0")}}, {Kind: mtl.Exit, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("0.25"), Price: mtl.MustDecimal("80"), ExecutedAt: at.Add(time.Hour), ActualFee: decimalPtr("0")}}}}
+		req := stoplore.ConfirmMigrationRequest{TradeID: tr.ID, AccountID: account.ID, SettlementCurrency: "USDC", Executions: []stoplore.MigrationExecution{{Kind: stoplore.Entry, ExecutionRequest: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("100"), ExecutedAt: at, ActualFee: decimalPtr("0")}}, {Kind: stoplore.Exit, ExecutionRequest: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("0.25"), Price: stoplore.MustDecimal("80"), ExecutedAt: at.Add(time.Hour), ActualFee: decimalPtr("0")}}}}
 		if _, err := s.ConfirmMigration(ctx, req); err == nil {
 			t.Fatal("nontrade classification silently confirmed")
 		}
@@ -173,7 +173,7 @@ func TestLegacyCSVPreservesPartialNontradeAndUnknownHistory(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r, err := s.ReportPerformance(ctx, mtl.ReportFilter{})
+		r, err := s.ReportPerformance(ctx, stoplore.ReportFilter{})
 		if err != nil || len(r.Groups) != 0 || len(r.Ongoing) != 1 {
 			t.Fatalf("partial report %+v %v", r, err)
 		}
@@ -207,7 +207,7 @@ func TestMigrationRejectsInvalidBatchesAndIncompleteConfirmationAtomically(t *te
 		if err := os.WriteFile(path, data.Bytes(), 0600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := s.ImportCSV(ctx, mtl.CSVImportRequest{Path: path, SourceID: "invalid-batch"}); err == nil {
+		if _, err := s.ImportCSV(ctx, stoplore.CSVImportRequest{Path: path, SourceID: "invalid-batch"}); err == nil {
 			t.Fatal("malformed batch accepted")
 		}
 		listed, err := s.ListTrades(ctx)
@@ -217,25 +217,25 @@ func TestMigrationRejectsInvalidBatchesAndIncompleteConfirmationAtomically(t *te
 		if err := os.WriteFile(path, original, 0600); err != nil {
 			t.Fatal(err)
 		}
-		trades, err := s.ImportCSV(ctx, mtl.CSVImportRequest{Path: path, SourceID: "confirmation"})
+		trades, err := s.ImportCSV(ctx, stoplore.CSVImportRequest{Path: path, SourceID: "confirmation"})
 		if err != nil {
 			t.Fatal(err)
 		}
 		tr := trades[0]
-		ex, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Confirm", EntryFeeRate: decimalPtr("1"), ExitFeeRate: decimalPtr("1")})
+		ex, err := s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Confirm", EntryFeeRate: decimalPtr("1"), ExitFeeRate: decimalPtr("1")})
 		if err != nil {
 			t.Fatal(err)
 		}
-		a, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: ex.ID, Name: "main"})
+		a, err := s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: ex.ID, Name: "main"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		req := mtl.ConfirmMigrationRequest{TradeID: tr.ID, AccountID: a.ID, SettlementCurrency: "USDT", Executions: []mtl.MigrationExecution{{Kind: mtl.Entry, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("100"), ExecutedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}}}}
+		req := stoplore.ConfirmMigrationRequest{TradeID: tr.ID, AccountID: a.ID, SettlementCurrency: "USDT", Executions: []stoplore.MigrationExecution{{Kind: stoplore.Entry, ExecutionRequest: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("100"), ExecutedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}}}}
 		if _, err := s.ConfirmMigration(ctx, req); err == nil {
 			t.Fatal("current fee defaults substituted for missing historical fee")
 		}
 		req.Executions[0].ActualFee = decimalPtr("0")
-		req.Executions = append(req.Executions, mtl.MigrationExecution{Kind: mtl.Exit, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("2"), Price: mtl.MustDecimal("120"), ExecutedAt: req.Executions[0].ExecutedAt.Add(time.Hour), ActualFee: decimalPtr("0")}})
+		req.Executions = append(req.Executions, stoplore.MigrationExecution{Kind: stoplore.Exit, ExecutionRequest: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("2"), Price: stoplore.MustDecimal("120"), ExecutedAt: req.Executions[0].ExecutedAt.Add(time.Hour), ActualFee: decimalPtr("0")}})
 		if _, err := s.ConfirmMigration(ctx, req); err == nil {
 			t.Fatal("overexit confirmed")
 		}
@@ -257,7 +257,7 @@ func TestMigrationRejectsInvalidBatchesAndIncompleteConfirmationAtomically(t *te
 		if err := os.WriteFile(path, modified.Bytes(), 0600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := s.ImportCSV(ctx, mtl.CSVImportRequest{Path: path, SourceID: "confirmation"}); err == nil {
+		if _, err := s.ImportCSV(ctx, stoplore.CSVImportRequest{Path: path, SourceID: "confirmation"}); err == nil {
 			t.Fatal("changed source overwritten")
 		}
 		source, err := os.ReadFile(path)
@@ -265,7 +265,7 @@ func TestMigrationRejectsInvalidBatchesAndIncompleteConfirmationAtomically(t *te
 			t.Fatalf("source modified by rejection: %v", err)
 		}
 		missing := filepath.Join(t.TempDir(), "missing.csv")
-		if _, err := s.ImportCSV(ctx, mtl.CSVImportRequest{Path: missing}); err == nil {
+		if _, err := s.ImportCSV(ctx, stoplore.CSVImportRequest{Path: missing}); err == nil {
 			t.Fatal("missing source accepted")
 		}
 		if _, err := os.Stat(missing); !os.IsNotExist(err) {
@@ -284,7 +284,7 @@ func TestMigrationRequiresNamedSetupBeforeConfirmation(t *testing.T) {
 		row := syntheticImportRow()
 		row[2] = "  "
 		path, _ := importFixture(t, importHeader, row)
-		imported, err := s.ImportCSV(ctx, mtl.CSVImportRequest{Path: path})
+		imported, err := s.ImportCSV(ctx, stoplore.CSVImportRequest{Path: path})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -300,20 +300,20 @@ func TestMigrationRequiresNamedSetupBeforeConfirmation(t *testing.T) {
 		if !pending {
 			t.Fatal("missing setup not pending")
 		}
-		ex, err := s.Exchange.Add(ctx, mtl.AddExchangeRequest{Name: "Venue"})
+		ex, err := s.Exchange.Add(ctx, stoplore.AddExchangeRequest{Name: "Venue"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		account, err := s.CreateAccount(ctx, mtl.CreateAccountRequest{ExchangeID: ex.ID, Name: "Main"})
+		account, err := s.CreateAccount(ctx, stoplore.CreateAccountRequest{ExchangeID: ex.ID, Name: "Main"})
 		if err != nil {
 			t.Fatal(err)
 		}
 		at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-		req := mtl.ConfirmMigrationRequest{TradeID: imported[0].ID, AccountID: account.ID, SettlementCurrency: "USDT", Executions: []mtl.MigrationExecution{{Kind: mtl.Entry, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("100"), ExecutedAt: at, ActualFee: decimalPtr("0")}}, {Kind: mtl.Exit, ExecutionRequest: mtl.ExecutionRequest{Quantity: mtl.MustDecimal("1"), Price: mtl.MustDecimal("120"), ExecutedAt: at.Add(time.Hour), ActualFee: decimalPtr("0")}}}}
+		req := stoplore.ConfirmMigrationRequest{TradeID: imported[0].ID, AccountID: account.ID, SettlementCurrency: "USDT", Executions: []stoplore.MigrationExecution{{Kind: stoplore.Entry, ExecutionRequest: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("100"), ExecutedAt: at, ActualFee: decimalPtr("0")}}, {Kind: stoplore.Exit, ExecutionRequest: stoplore.ExecutionRequest{Quantity: stoplore.MustDecimal("1"), Price: stoplore.MustDecimal("120"), ExecutedAt: at.Add(time.Hour), ActualFee: decimalPtr("0")}}}}
 		if _, err = s.ConfirmMigration(ctx, req); err == nil {
 			t.Fatal("confirmed without named setup")
 		}
-		setup, err := s.CreateSetup(ctx, mtl.CreateSetupRequest{Name: "Historical setup", Rules: "Known rules"})
+		setup, err := s.CreateSetup(ctx, stoplore.CreateSetupRequest{Name: "Historical setup", Rules: "Known rules"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -325,7 +325,7 @@ func TestMigrationRequiresNamedSetupBeforeConfirmation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		report, err := s.ReportPerformance(ctx, mtl.ReportFilter{})
+		report, err := s.ReportPerformance(ctx, stoplore.ReportFilter{})
 		if err != nil || len(report.Groups) != 1 || report.Groups[0].EligibleCount != 1 || report.Groups[0].SetupName != "Historical setup" {
 			t.Fatalf("confirmed report: %+v %v", report, err)
 		}
@@ -368,7 +368,7 @@ func TestCSVImportLegacyRowsUnderCurrentHeaderAndMixedLayouts(t *testing.T) {
 				if err = os.WriteFile(path, data.Bytes(), 0600); err != nil {
 					t.Fatal(err)
 				}
-				trades, err := s.ImportCSV(context.Background(), mtl.CSVImportRequest{Path: path})
+				trades, err := s.ImportCSV(context.Background(), stoplore.CSVImportRequest{Path: path})
 				if err != nil || len(trades) != len(rows)-1 {
 					t.Fatalf("import: %+v %v", trades, err)
 				}
