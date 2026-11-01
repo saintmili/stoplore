@@ -19,3 +19,9 @@ Baseline: `0145569`
 The approved test seam is the public Go library API, shared across CSV and an
 isolated PostgreSQL database. Each ticket is implemented in its own worktree and
 merged into the integration branch after its dependencies are resolved.
+
+
+- [02: Define and version trading setups](issues/02-define-and-version-trading-setups.md)
+  resolved: named setups retain ordered rule versions, each with its own UUID.
+  Public setup methods preserve earlier rules across CSV and PostgreSQL reopen;
+  trades use setup-version identity for historical context.
