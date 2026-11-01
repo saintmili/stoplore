@@ -56,6 +56,7 @@ type ExecutionRequest struct {
 }
 
 type Trade struct {
+	Migration           *MigrationEvidence
 	RiskCorrections     []RiskCorrection
 	OriginalPlannedRisk *Decimal
 	// PendingEssentials identifies migration facts awaiting explicit confirmation.
