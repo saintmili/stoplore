@@ -37,3 +37,8 @@ merged into the integration branch after its dependencies are resolved.
   version context, optional margin/leverage, and snapshotted entry fees. Shared
   CSV/PostgreSQL behaviors verify reopen, errors, decimal inputs, and 18-place
   half-away-from-zero calculated fees.
+
+- [07: Preserve original plans and dated revisions](issues/07-preserve-original-plans-and-dated-revisions.md)
+  resolved: optional original plans and dated full-plan snapshots preserve decision
+  history; corrections keep before/after values and explanations without adding
+  decisions. Shared public API tests cover CSV and PostgreSQL reopening.
