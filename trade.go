@@ -56,6 +56,8 @@ type ExecutionRequest struct {
 }
 
 type Trade struct {
+	FundingCorrections      []FundingCorrection
+	ExecutionCorrections    []ExecutionCorrection
 	FundingPayments         []FundingPayment
 	ReviewHistory           []ReviewCorrection
 	Tags                    []string
